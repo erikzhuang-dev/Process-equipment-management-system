@@ -1,5 +1,27 @@
 {
   "version": "7",
   "dialect": "mysql",
-  "entries": []
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1786936382965,
+      "tag": "0000_big_fantastic_four",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1786936556672,
+      "tag": "0001_new_cerebro",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786936717733,
+      "tag": "0002_famous_energizer",
+      "breakpoints": true
+    }
+  ]
 }

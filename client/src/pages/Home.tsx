@@ -1,33 +1,197 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { Streamdown } from 'streamdown';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { trpc } from "@/lib/trpc";
+import { downloadWorkbook, parseEquipmentWorkbook, parseMaintenanceWorkbook, parseRepairWorkbook } from "@/lib/excel";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Boxes,
+  CalendarCheck2,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Factory,
+  FileSpreadsheet,
+  Gauge,
+  HardHat,
+  History,
+  Loader2,
+  PackageSearch,
+  Plus,
+  Search,
+  Settings2,
+  ShieldCheck,
+  TrendingUp,
+  Wrench,
+} from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { useLocation } from "wouter";
 
-/**
- * All content in this page are only for example, replace with your own feature implementation
- * When building pages, remember your instructions in Frontend Workflow, Frontend Best Practices, Design Guide and Common Pitfalls
- */
-export default function Home() {
-  // The useAuth hook provides authentication state.
-  // To implement login/logout, call logout(), or start login from an event
-  // handler: onClick={() => startLogin()} (imported from "@/const"). Never call
-  // startLogin() during render (no href={startLogin()}) — it mints a one-time
-  // nonce cookie and must run only at the moment of navigation.
-  let { user, loading, error, isAuthenticated, logout } = useAuth();
+type EquipmentForm = {
+  code: string;
+  name: string;
+  model: string;
+  specification: string;
+  process: string;
+  location: string;
+  status: "running" | "stopped" | "maintenance" | "scrapped";
+};
 
-  // If theme is switchable in App.tsx, we can implement theme toggling like this:
-  // const { theme, toggleTheme } = useTheme();
+const emptyEquipment: EquipmentForm = {
+  code: "",
+  name: "",
+  model: "",
+  specification: "",
+  process: "",
+  location: "",
+  status: "running",
+};
 
+const statusMeta = {
+  running: { label: "运行中", className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+  stopped: { label: "停机", className: "bg-slate-100 text-slate-700 border-slate-200" },
+  maintenance: { label: "维修中", className: "bg-amber-100 text-amber-800 border-amber-200" },
+  scrapped: { label: "报废", className: "bg-rose-100 text-rose-700 border-rose-200" },
+} as const;
+
+const maintenanceStatus = { pending: "待执行", in_progress: "执行中", completed: "已完成" } as const;
+const repairStatus = { pending: "待接单", in_progress: "维修中", completed: "已完成" } as const;
+
+function dateText(value?: Date | null) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col">
-      <main>
-        {/* Example: lucide-react for icons */}
-        <Loader2 className="animate-spin" />
-        Example Page
-        {/* Example: Streamdown for markdown rendering */}
-        <Streamdown>Any **markdown** content</Streamdown>
-        <Button variant="default">Example Button</Button>
-      </main>
+    <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <p className="mb-1 text-xs font-semibold tracking-[0.18em] text-emerald-700 uppercase">{eyebrow}</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-[#233428]">{title}</h1>
+        <p className="mt-1 text-sm text-[#6b7c6b]">{description}</p>
+      </div>
+      {action}
     </div>
   );
+}
+
+function DataCard({ icon: Icon, label, value, hint, tone = "green" }: { icon: typeof Activity; label: string; value: string | number; hint: string; tone?: "green" | "amber" | "red" | "slate" }) {
+  const toneClasses = { green: "bg-emerald-100 text-emerald-700", amber: "bg-amber-100 text-amber-700", red: "bg-rose-100 text-rose-700", slate: "bg-slate-100 text-slate-700" };
+  return <article className="industrial-card p-5"><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-medium text-[#6b7c6b]">{label}</p><p className="mt-3 text-3xl font-semibold tracking-tight text-[#233428]">{value}</p><p className="mt-2 text-xs text-[#829081]">{hint}</p></div><span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${toneClasses[tone]}`}><Icon className="h-5 w-5" /></span></div></article>;
+}
+
+function EmptyState({ title, description }: { title: string; description: string }) {
+  return <div className="flex min-h-44 flex-col items-center justify-center rounded-2xl border border-dashed border-[#d9e5d6] bg-[#fbfdf9] px-5 text-center"><PackageSearch className="mb-3 h-7 w-7 text-[#9aab99]" /><p className="text-sm font-medium text-[#4e614f]">{title}</p><p className="mt-1 max-w-sm text-xs leading-5 text-[#829081]">{description}</p></div>;
+}
+
+function EquipmentDialog({ initial, onSubmit, trigger }: { initial?: EquipmentForm; onSubmit: (values: EquipmentForm) => Promise<unknown>; trigger: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const [values, setValues] = useState<EquipmentForm>(initial ?? emptyEquipment);
+  const [saving, setSaving] = useState(false);
+  const update = <K extends keyof EquipmentForm>(key: K, value: EquipmentForm[K]) => setValues(current => ({ ...current, [key]: value }));
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    try { await onSubmit(values); setOpen(false); setValues(initial ?? emptyEquipment); } finally { setSaving(false); }
+  };
+  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild>{trigger}</DialogTrigger><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>{initial ? "编辑设备" : "新增设备"}</DialogTitle><DialogDescription>请完整填写设备台账字段；状态变更会独立保留完整历史记录。</DialogDescription></DialogHeader><form onSubmit={submit} className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><FormInput label="编号" value={values.code} onChange={value => update("code", value)} /><FormInput label="名称" value={values.name} onChange={value => update("name", value)} /><FormInput label="型号" value={values.model} onChange={value => update("model", value)} /><FormInput label="规格" value={values.specification} onChange={value => update("specification", value)} /><FormInput label="所属工序" value={values.process} onChange={value => update("process", value)} /><FormInput label="位置" value={values.location} onChange={value => update("location", value)} /><div className="space-y-1.5"><label className="text-sm font-medium">状态</label><Select value={values.status} onValueChange={value => update("status", value as EquipmentForm["status"])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(statusMeta).map(([key, item]) => <SelectItem key={key} value={key}>{item.label}</SelectItem>)}</SelectContent></Select></div></div><DialogFooter><Button type="submit" disabled={saving} className="bg-[#4a7c59] text-white hover:bg-[#3e6a4b]">{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}保存设备</Button></DialogFooter></form></DialogContent></Dialog>;
+}
+
+function FormInput({ label, value, onChange, type = "text" }: { label: string; value: string | number; onChange: (value: string) => void; type?: string }) {
+  return <div className="space-y-1.5"><label className="text-sm font-medium text-[#405342]">{label}</label><Input type={type} value={value} onChange={event => onChange(event.target.value)} required className="border-[#d9e5d6] bg-white focus-visible:ring-[#6f9a73]" /></div>;
+}
+
+function DashboardView() {
+  const metrics = trpc.dashboard.metrics.useQuery();
+  const equipment = trpc.equipment.export.useQuery();
+  const repairs = trpc.repairs.list.useQuery();
+  const maintenance = trpc.maintenance.list.useQuery();
+  const trend = useMemo(() => {
+    const entries = new Map<string, number>();
+    (repairs.data ?? []).filter(item => item.completedAt).forEach(item => {
+      const key = new Date(item.completedAt!).toLocaleDateString("zh-CN", { month: "numeric", year: "2-digit" });
+      entries.set(key, (entries.get(key) ?? 0) + 1);
+    });
+    return Array.from(entries.entries()).map(([month, repairs]) => ({ month, repairs }));
+  }, [repairs.data]);
+  const statusCounts = useMemo(() => Object.keys(statusMeta).map(status => ({ status, count: (equipment.data ?? []).filter(item => item.status === status).length })), [equipment.data]);
+  const data = metrics.data;
+  return <><PageHeader eyebrow="设备运营中心" title="生产工艺设备仪表盘" description="围绕设备运行、保养、维修和库存风险进行统一监控。" /><section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><DataCard icon={Factory} label="设备总数" value={data?.totalEquipment ?? 0} hint="已纳入设备台账" /><DataCard icon={Gauge} label="在线率" value={`${data?.onlineRate ?? 0}%`} hint="运行中设备占比" tone="green" /><DataCard icon={AlertTriangle} label="故障率" value={`${data?.faultRate ?? 0}%`} hint={`当前待处理故障 ${data?.openFaults ?? 0} 项`} tone={data?.openFaults ? "red" : "slate"} /><DataCard icon={CalendarCheck2} label="保养完成率" value={`${data?.maintenanceCompletionRate ?? 0}%`} hint={`已完成维修 ${data?.completedRepairs ?? 0} 项`} tone="amber" /></section><section className="mt-5 grid gap-5 xl:grid-cols-[1.5fr_1fr]"><article className="industrial-card p-5"><div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold text-[#26392a]">维修频次趋势</h2><p className="mt-1 text-xs text-[#829081]">以已完成维修工单为统计口径</p></div><TrendingUp className="h-5 w-5 text-[#4a7c59]" /></div>{trend.length ? <div className="h-64"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trend} margin={{ left: -18, right: 10, top: 4 }}><defs><linearGradient id="repairFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#75a87d" stopOpacity={0.35}/><stop offset="100%" stopColor="#75a87d" stopOpacity={0.03}/></linearGradient></defs><CartesianGrid vertical={false} stroke="#e7efe5"/><XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#829081" }}/><YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#829081" }}/><Tooltip contentStyle={{ borderRadius: 14, border: "1px solid #d9e5d6" }}/><Area type="monotone" dataKey="repairs" name="维修次数" stroke="#4a7c59" strokeWidth={2.5} fill="url(#repairFill)" /></AreaChart></ResponsiveContainer></div> : <EmptyState title="暂无维修趋势数据" description="完成维修工单后，系统将根据完成时间自动汇总趋势。" />}</article><article className="industrial-card p-5"><div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold text-[#26392a]">设备状态分布</h2><p className="mt-1 text-xs text-[#829081]">当前台账状态实时汇总</p></div><Activity className="h-5 w-5 text-[#4a7c59]" /></div><div className="space-y-4">{statusCounts.map(item => <div key={item.status}><div className="mb-1.5 flex items-center justify-between text-sm"><span className="text-[#516552]">{statusMeta[item.status as keyof typeof statusMeta].label}</span><span className="font-semibold text-[#2d3b2d]">{item.count}</span></div><div className="h-2 overflow-hidden rounded-full bg-[#edf3ea]"><div className="h-full rounded-full bg-[#78a879]" style={{ width: `${equipment.data?.length ? (item.count / equipment.data.length) * 100 : 0}%` }} /></div></div>)}</div><div className="mt-6 rounded-2xl bg-[#f0f7ec] p-4 text-sm text-[#4e614f]">库存风险提示：<strong className="font-semibold">{data?.lowStockParts ?? 0}</strong> 项备件库存低于或等于安全库存。</div></article></section><section className="mt-5 grid gap-5 lg:grid-cols-2"><article className="industrial-card p-5"><h2 className="font-semibold text-[#26392a]">近期保养工单</h2><div className="mt-4">{maintenance.data?.length ? <div className="space-y-2">{maintenance.data.slice(0, 4).map(item => <div key={item.id} className="flex items-center justify-between rounded-xl bg-[#f8fbf6] px-3 py-2.5"><span className="text-sm text-[#405342]">工单 #{item.id}</span><Badge variant="outline" className="border-[#d7e6d5] bg-white text-[#5c735e]">{maintenanceStatus[item.status]}</Badge></div>)}</div> : <EmptyState title="暂无保养工单" description="新增周期性保养计划后，系统会立即生成首张待执行工单。" />}</div></article><article className="industrial-card p-5"><h2 className="font-semibold text-[#26392a]">关键运营说明</h2><div className="mt-4 space-y-3 text-sm leading-6 text-[#607260]"><p><span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#dcebd8] text-xs font-bold text-[#4a7c59]">1</span>设备状态的每一次变更均保留变更前后状态及操作者。</p><p><span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#dcebd8] text-xs font-bold text-[#4a7c59]">2</span>完成周期保养会自动将计划推进至下一周期并生成下一张工单。</p><p><span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#dcebd8] text-xs font-bold text-[#4a7c59]">3</span>备件出入库会写入不可缺失的库存流水和操作审计记录。</p></div></article></section></>;
+}
+
+function EquipmentView({ isAdmin }: { isAdmin: boolean }) {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [historyId, setHistoryId] = useState<number | null>(null);
+  const [statusId, setStatusId] = useState<number | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const utils = trpc.useUtils();
+  const result = trpc.equipment.list.useQuery({ search: search || undefined, page, pageSize: 8 });
+  const exportData = trpc.equipment.export.useQuery();
+  const history = trpc.equipment.statusHistory.useQuery({ equipmentId: historyId ?? 1 }, { enabled: historyId !== null });
+  const create = trpc.equipment.create.useMutation({ onSuccess: () => { toast.success("设备已新增"); utils.equipment.list.invalidate(); utils.equipment.export.invalidate(); utils.dashboard.metrics.invalidate(); } });
+  const update = trpc.equipment.update.useMutation({ onSuccess: () => { toast.success("设备台账已更新"); utils.equipment.list.invalidate(); utils.equipment.export.invalidate(); } });
+  const remove = trpc.equipment.remove.useMutation({ onSuccess: () => { toast.success("设备已删除"); utils.equipment.list.invalidate(); utils.equipment.export.invalidate(); utils.dashboard.metrics.invalidate(); } });
+  const changeStatus = trpc.equipment.changeStatus.useMutation({ onSuccess: () => { toast.success("设备状态已变更并留痕"); setStatusId(null); utils.equipment.list.invalidate(); utils.equipment.export.invalidate(); utils.dashboard.metrics.invalidate(); if (historyId) utils.equipment.statusHistory.invalidate({ equipmentId: historyId }); } });
+  const batchImport = trpc.equipment.batchImport.useMutation({ onSuccess: data => { toast.success(`已处理 ${data.processed} 条设备台账`); utils.equipment.list.invalidate(); utils.equipment.export.invalidate(); utils.dashboard.metrics.invalidate(); } });
+  const onImport = async (file?: File) => { if (!file) return; try { await batchImport.mutateAsync(await parseEquipmentWorkbook(file)); } catch (error) { toast.error(error instanceof Error ? error.message : "设备台账导入失败"); } };
+  const exportExcel = () => { downloadWorkbook("设备台账.xlsx", "设备台账", (exportData.data ?? []).map(item => ({ "编号": item.code, "名称": item.name, "型号": item.model, "规格": item.specification, "所属工序": item.process, "位置": item.location, "状态": statusMeta[item.status].label }))); };
+  const maxPage = Math.max(1, Math.ceil((result.data?.total ?? 0) / 8));
+  return <><PageHeader eyebrow="设备全生命周期" title="设备台账管理" description="维护生产设备基本信息，并对设备状态变更进行完整追溯。" action={<div className="flex flex-wrap gap-2"><input ref={inputRef} className="hidden" type="file" accept=".xlsx,.xls" onChange={event => onImport(event.target.files?.[0])} />{isAdmin && <Button variant="outline" onClick={() => inputRef.current?.click()} className="border-[#9bbb9b] text-[#476e50]"><ArrowUpFromLine className="mr-2 h-4 w-4" />导入 Excel</Button>}<Button variant="outline" onClick={exportExcel} disabled={!exportData.data?.length} className="border-[#9bbb9b] text-[#476e50]"><ArrowDownToLine className="mr-2 h-4 w-4" />导出 Excel</Button>{isAdmin && <EquipmentDialog onSubmit={values => create.mutateAsync(values)} trigger={<Button className="bg-[#4a7c59] text-white hover:bg-[#3e6a4b]"><Plus className="mr-2 h-4 w-4" />新增设备</Button>} />}</div>} /><div className="industrial-card overflow-hidden"><div className="flex flex-col gap-3 border-b border-[#e5eee2] p-4 md:flex-row md:items-center md:justify-between"><div className="relative w-full md:max-w-sm"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a9a89]" /><Input value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="搜索编号、名称或所属工序" className="border-[#d9e5d6] bg-[#fbfdf9] pl-9" /></div><span className="text-sm text-[#718372]">共 <strong className="font-semibold text-[#38543d]">{result.data?.total ?? 0}</strong> 条记录</span></div>{result.data?.items.length ? <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-sm"><thead className="bg-[#eff7eb] text-left text-xs font-medium text-[#6a7d6a]"><tr>{["编号", "名称", "型号", "规格", "所属工序", "位置", "状态", "操作"].map(head => <th key={head} className="px-4 py-3.5 font-medium">{head}</th>)}</tr></thead><tbody className="divide-y divide-[#edf2eb]">{result.data.items.map(item => <tr key={item.id} className="transition-colors hover:bg-[#fbfdf9]"><td className="px-4 py-4 font-medium text-[#34513a]">{item.code}</td><td className="px-4 py-4 text-[#2d3b2d]">{item.name}</td><td className="px-4 py-4 text-[#627562]">{item.model}</td><td className="px-4 py-4 text-[#627562]">{item.specification}</td><td className="px-4 py-4 text-[#627562]">{item.process}</td><td className="px-4 py-4 text-[#627562]">{item.location}</td><td className="px-4 py-4"><Badge variant="outline" className={statusMeta[item.status].className}>{statusMeta[item.status].label}</Badge></td><td className="px-4 py-4"><div className="flex items-center gap-1"><Button size="sm" variant="ghost" onClick={() => setHistoryId(item.id)} className="h-8 px-2 text-[#56745b]">历史</Button><Button size="sm" variant="ghost" onClick={() => setStatusId(item.id)} className="h-8 px-2 text-[#56745b]">状态</Button>{isAdmin && <EquipmentDialog initial={{ code: item.code, name: item.name, model: item.model, specification: item.specification, process: item.process, location: item.location, status: item.status }} onSubmit={values => update.mutateAsync({ id: item.id, values })} trigger={<Button size="sm" variant="ghost" className="h-8 px-2 text-[#56745b]">编辑</Button>} />}{isAdmin && <Button size="sm" variant="ghost" onClick={() => { if (confirm(`确定删除设备“${item.name}”吗？`)) remove.mutate({ id: item.id }); }} className="h-8 px-2 text-rose-600">删除</Button>}</div></td></tr>)}</tbody></table></div> : <div className="p-6"><EmptyState title="暂无设备台账" description="管理员可新增设备，或按标准字段导入 Excel 台账；系统不会预置虚构设备数据。" /></div>}<div className="flex items-center justify-between border-t border-[#e5eee2] px-4 py-3 text-sm text-[#718372]"><span>第 {page} / {maxPage} 页</span><div className="flex gap-1"><Button variant="outline" size="icon" disabled={page <= 1} onClick={() => setPage(current => current - 1)}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" disabled={page >= maxPage} onClick={() => setPage(current => current + 1)}><ChevronRight className="h-4 w-4" /></Button></div></div></div><Dialog open={historyId !== null} onOpenChange={open => !open && setHistoryId(null)}><DialogContent><DialogHeader><DialogTitle>设备状态变更历史</DialogTitle><DialogDescription>每次状态变更均记录变更前后状态、变更人及时间。</DialogDescription></DialogHeader><div className="max-h-80 space-y-2 overflow-y-auto">{history.data?.length ? history.data.map(item => <div key={item.id} className="rounded-xl bg-[#f5f9f2] p-3 text-sm text-[#526652]"><strong>{item.fromStatus ? statusMeta[item.fromStatus].label : "初始状态"}</strong> → <strong>{statusMeta[item.toStatus].label}</strong><span className="ml-2 text-xs text-[#829081]">{dateText(item.changedAt)}</span></div>) : <EmptyState title="暂无状态变更记录" description="初始登记后的状态变更将在此处显示。" />}</div></DialogContent></Dialog><Dialog open={statusId !== null} onOpenChange={open => !open && setStatusId(null)}><DialogContent><DialogHeader><DialogTitle>变更设备状态</DialogTitle><DialogDescription>状态变更会自动写入设备状态历史和操作日志。</DialogDescription></DialogHeader><div className="grid grid-cols-2 gap-2">{Object.entries(statusMeta).map(([key, item]) => <Button key={key} variant="outline" disabled={changeStatus.isPending} onClick={() => statusId && changeStatus.mutate({ id: statusId, status: key as EquipmentForm["status"] })} className="justify-start border-[#d9e5d6] hover:bg-[#eff7eb]"><span className={`mr-2 h-2 w-2 rounded-full ${item.className.split(" ")[0]}`} />{item.label}</Button>)}</div></DialogContent></Dialog></>;
+}
+
+function MaintenanceView({ isAdmin }: { isAdmin: boolean }) {
+  const [open, setOpen] = useState(false); const [equipmentId, setEquipmentId] = useState(""); const [cycleDays, setCycleDays] = useState("30"); const [content, setContent] = useState(""); const [scheduledAt, setScheduledAt] = useState(""); const inputRef = useRef<HTMLInputElement>(null); const utils = trpc.useUtils();
+  const equipment = trpc.equipment.export.useQuery(); const rows = trpc.maintenance.list.useQuery();
+  const createPlan = trpc.maintenance.createPlan.useMutation({ onSuccess: () => { toast.success("保养计划已建立，并生成首张工单"); setOpen(false); utils.maintenance.list.invalidate(); utils.dashboard.metrics.invalidate(); } });
+  const complete = trpc.maintenance.complete.useMutation({ onSuccess: () => { toast.success("保养工单已完成，下一周期工单已生成"); utils.maintenance.list.invalidate(); utils.dashboard.metrics.invalidate(); } });
+  const batchImport = trpc.maintenance.batchImport.useMutation({ onSuccess: data => { toast.success(`已导入 ${data.processed} 条保养记录`); utils.maintenance.list.invalidate(); utils.dashboard.metrics.invalidate(); } });
+  const equipmentById = new Map((equipment.data ?? []).map(item => [item.id, item]));
+  const exportExcel = () => downloadWorkbook("保养记录.xlsx", "保养记录", (rows.data ?? []).filter(item => item.status === "completed").map(item => ({ "设备编号": equipmentById.get(item.equipmentId)?.code ?? "", "执行人": item.executor ?? "", "完成时间": item.completedAt ?? "", "保养内容": item.maintenanceContent, "备注": item.notes ?? "" })));
+  return <><PageHeader eyebrow="预防性维护" title="保养计划与工单" description="制定设备周期性保养计划，完成工单后自动生成下一周期待执行记录。" action={<div className="flex gap-2"><input ref={inputRef} className="hidden" type="file" accept=".xlsx,.xls" onChange={async event => { try { const file = event.target.files?.[0]; if (file) await batchImport.mutateAsync(await parseMaintenanceWorkbook(file)); } catch (error) { toast.error(error instanceof Error ? error.message : "保养记录导入失败"); } }} />{isAdmin && <Button variant="outline" onClick={() => inputRef.current?.click()} className="border-[#9bbb9b] text-[#476e50]"><ArrowUpFromLine className="mr-2 h-4 w-4" />导入 Excel</Button>}<Button variant="outline" onClick={exportExcel} disabled={!rows.data?.some(item => item.status === "completed")} className="border-[#9bbb9b] text-[#476e50]"><ArrowDownToLine className="mr-2 h-4 w-4" />导出 Excel</Button>{isAdmin && <Button onClick={() => setOpen(true)} className="bg-[#4a7c59] text-white hover:bg-[#3e6a4b]"><Plus className="mr-2 h-4 w-4" />制定计划</Button>}</div>} /><div className="industrial-card overflow-hidden">{rows.data?.length ? <div className="overflow-x-auto"><table className="w-full min-w-[800px] text-sm"><thead className="bg-[#eff7eb] text-left text-xs text-[#6a7d6a]"><tr>{["工单", "设备", "计划时间", "状态", "执行人", "完成时间", "操作"].map(head => <th key={head} className="px-4 py-3.5 font-medium">{head}</th>)}</tr></thead><tbody className="divide-y divide-[#edf2eb]">{rows.data.map(item => <tr key={item.id}><td className="px-4 py-4 font-medium text-[#38543d]">#{item.id}</td><td className="px-4 py-4">{equipmentById.get(item.equipmentId)?.name ?? `设备 #${item.equipmentId}`}</td><td className="px-4 py-4 text-[#627562]">{dateText(item.scheduledAt)}</td><td className="px-4 py-4"><Badge variant="outline" className="border-[#d7e6d5] bg-[#f8fbf6] text-[#58705a]">{maintenanceStatus[item.status]}</Badge></td><td className="px-4 py-4 text-[#627562]">{item.executor ?? "—"}</td><td className="px-4 py-4 text-[#627562]">{dateText(item.completedAt)}</td><td className="px-4 py-4">{item.status !== "completed" ? <Button size="sm" variant="outline" onClick={() => { const executor = prompt("请输入执行人"); const maintenanceContent = prompt("请输入保养内容", item.maintenanceContent); const notes = prompt("请输入备注（可留空）"); if (executor && maintenanceContent) complete.mutate({ workOrderId: item.id, executor, maintenanceContent, notes: notes || undefined }); }} className="border-[#9bbb9b] text-[#476e50]">完成工单</Button> : <span className="text-xs text-[#829081]">已留痕</span>}</td></tr>)}</tbody></table></div> : <div className="p-6"><EmptyState title="暂无保养计划或工单" description="制定周期性保养计划后，系统会生成首张待执行工单。" /></div>}</div><Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>制定周期性保养计划</DialogTitle><DialogDescription>系统根据周期生成首张保养工单；完成后将自动推进下一周期。</DialogDescription></DialogHeader><div className="space-y-3"><div className="space-y-1.5"><label className="text-sm font-medium">设备</label><Select value={equipmentId} onValueChange={setEquipmentId}><SelectTrigger><SelectValue placeholder="选择设备" /></SelectTrigger><SelectContent>{(equipment.data ?? []).map(item => <SelectItem key={item.id} value={String(item.id)}>{item.code} · {item.name}</SelectItem>)}</SelectContent></Select></div><FormInput label="保养周期（天）" type="number" value={cycleDays} onChange={setCycleDays} /><FormInput label="计划时间" type="datetime-local" value={scheduledAt} onChange={setScheduledAt} /><div className="space-y-1.5"><label className="text-sm font-medium">保养内容</label><Textarea value={content} onChange={event => setContent(event.target.value)} required /></div></div><DialogFooter><Button disabled={!equipmentId || !scheduledAt || !content || createPlan.isPending} onClick={() => createPlan.mutate({ equipmentId: Number(equipmentId), cycleDays: Number(cycleDays), maintenanceContent: content, nextScheduledAt: new Date(scheduledAt) })} className="bg-[#4a7c59] text-white hover:bg-[#3e6a4b]">生成计划与工单</Button></DialogFooter></DialogContent></Dialog></>;
+}
+
+function RepairsView() {
+  const [open, setOpen] = useState(false); const [equipmentId, setEquipmentId] = useState(""); const [description, setDescription] = useState(""); const [severity, setSeverity] = useState<"low" | "medium" | "high" | "critical">("medium"); const [discoveredAt, setDiscoveredAt] = useState(""); const inputRef = useRef<HTMLInputElement>(null); const utils = trpc.useUtils();
+  const equipment = trpc.equipment.export.useQuery(); const faults = trpc.repairs.faults.useQuery(); const repairs = trpc.repairs.list.useQuery();
+  const fault = trpc.repairs.createFault.useMutation({ onSuccess: () => { toast.success("故障已登记"); setOpen(false); utils.repairs.faults.invalidate(); utils.dashboard.metrics.invalidate(); } }); const createRepair = trpc.repairs.create.useMutation({ onSuccess: () => { toast.success("维修工单已创建"); utils.repairs.faults.invalidate(); utils.repairs.list.invalidate(); } }); const finishRepair = trpc.repairs.complete.useMutation({ onSuccess: () => { toast.success("维修工单已完成"); utils.repairs.faults.invalidate(); utils.repairs.list.invalidate(); utils.dashboard.metrics.invalidate(); } }); const batchImport = trpc.repairs.batchImport.useMutation({ onSuccess: data => { toast.success(`已导入 ${data.processed} 条维修记录`); utils.repairs.list.invalidate(); utils.dashboard.metrics.invalidate(); } });
+  const equipmentById = new Map((equipment.data ?? []).map(item => [item.id, item])); const faultById = new Map((faults.data ?? []).map(item => [item.id, item]));
+  const exportExcel = () => downloadWorkbook("维修记录.xlsx", "维修记录", (repairs.data ?? []).filter(item => item.status === "completed").map(item => ({ "设备编号": equipmentById.get(item.equipmentId)?.code ?? "", "维修人员": item.technician ?? "", "维修内容": item.repairContent ?? "", "费用": item.repairCost, "完成时间": item.completedAt ?? "" })));
+  return <><PageHeader eyebrow="故障闭环" title="故障报修与维修记录" description="从故障登记到维修完成，记录严重程度、维修人员、维修内容、费用与完成时间。" action={<div className="flex gap-2"><input ref={inputRef} className="hidden" type="file" accept=".xlsx,.xls" onChange={async event => { try { const file = event.target.files?.[0]; if (file) await batchImport.mutateAsync(await parseRepairWorkbook(file)); } catch (error) { toast.error(error instanceof Error ? error.message : "维修记录导入失败"); } }} /><Button variant="outline" onClick={() => inputRef.current?.click()} className="border-[#9bbb9b] text-[#476e50]"><ArrowUpFromLine className="mr-2 h-4 w-4" />导入 Excel</Button><Button variant="outline" onClick={exportExcel} disabled={!repairs.data?.some(item => item.status === "completed")} className="border-[#9bbb9b] text-[#476e50]"><ArrowDownToLine className="mr-2 h-4 w-4" />导出 Excel</Button><Button onClick={() => setOpen(true)} className="bg-[#4a7c59] text-white hover:bg-[#3e6a4b]"><Plus className="mr-2 h-4 w-4" />故障登记</Button></div>} /><div className="grid gap-5 xl:grid-cols-[1fr_1.35fr]"><article className="industrial-card overflow-hidden"><div className="border-b border-[#e5eee2] px-5 py-4"><h2 className="font-semibold text-[#26392a]">故障登记</h2></div>{faults.data?.length ? <div className="divide-y divide-[#edf2eb]">{faults.data.map(item => <div key={item.id} className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium text-[#314a36]">{equipmentById.get(item.equipmentId)?.name ?? `设备 #${item.equipmentId}`}</p><p className="mt-1 text-sm text-[#627562]">{item.description}</p></div><Badge variant="outline" className={item.severity === "critical" || item.severity === "high" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-amber-200 bg-amber-50 text-amber-700"}>{({ low: "低", medium: "中", high: "高", critical: "严重" } as const)[item.severity]}</Badge></div><div className="mt-3 flex items-center justify-between"><span className="text-xs text-[#829081]">发现于 {dateText(item.discoveredAt)}</span>{item.status === "open" && <Button size="sm" variant="outline" onClick={() => createRepair.mutate({ faultId: item.id, equipmentId: item.equipmentId })} className="border-[#9bbb9b] text-[#476e50]">创建维修工单</Button>}</div></div>)}</div> : <div className="p-5"><EmptyState title="暂无故障登记" description="可在发现设备异常时登记故障，并创建对应维修工单。" /></div>}</article><article className="industrial-card overflow-hidden"><div className="border-b border-[#e5eee2] px-5 py-4"><h2 className="font-semibold text-[#26392a]">维修工单跟踪</h2></div>{repairs.data?.length ? <div className="divide-y divide-[#edf2eb]">{repairs.data.map(item => <div key={item.id} className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between"><div><p className="font-medium text-[#314a36]">{equipmentById.get(item.equipmentId)?.name ?? `设备 #${item.equipmentId}`}</p><p className="mt-1 text-xs text-[#829081]">{item.faultId ? faultById.get(item.faultId)?.description ?? "关联故障" : "Excel 导入历史记录"}</p></div><div className="flex items-center gap-3"><Badge variant="outline" className="border-[#d7e6d5] bg-[#f8fbf6] text-[#58705a]">{repairStatus[item.status]}</Badge>{item.status !== "completed" ? <Button size="sm" variant="outline" onClick={() => { const technician = prompt("请输入维修人员", item.technician ?? ""); const repairContent = prompt("请输入维修内容", item.repairContent ?? ""); const repairCost = prompt("请输入维修费用", item.repairCost); if (technician && repairContent && repairCost) finishRepair.mutate({ workOrderId: item.id, technician, repairContent, repairCost }); }} className="border-[#9bbb9b] text-[#476e50]">完成维修</Button> : <span className="text-xs text-[#829081]">{dateText(item.completedAt)}</span>}</div></div>)}</div> : <div className="p-5"><EmptyState title="暂无维修工单" description="创建故障对应的维修工单，完成后将形成可导出的维修记录。" /></div>}</article></div><Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>故障登记</DialogTitle><DialogDescription>登记故障描述、发现时间与严重程度；随后可创建维修工单持续跟踪。</DialogDescription></DialogHeader><div className="space-y-3"><div className="space-y-1.5"><label className="text-sm font-medium">设备</label><Select value={equipmentId} onValueChange={setEquipmentId}><SelectTrigger><SelectValue placeholder="选择设备" /></SelectTrigger><SelectContent>{(equipment.data ?? []).map(item => <SelectItem key={item.id} value={String(item.id)}>{item.code} · {item.name}</SelectItem>)}</SelectContent></Select></div><FormInput label="发现时间" type="datetime-local" value={discoveredAt} onChange={setDiscoveredAt} /><div className="space-y-1.5"><label className="text-sm font-medium">严重程度</label><Select value={severity} onValueChange={value => setSeverity(value as typeof severity)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">低</SelectItem><SelectItem value="medium">中</SelectItem><SelectItem value="high">高</SelectItem><SelectItem value="critical">严重</SelectItem></SelectContent></Select></div><div className="space-y-1.5"><label className="text-sm font-medium">故障描述</label><Textarea value={description} onChange={event => setDescription(event.target.value)} /></div></div><DialogFooter><Button disabled={!equipmentId || !discoveredAt || !description || fault.isPending} onClick={() => fault.mutate({ equipmentId: Number(equipmentId), description, discoveredAt: new Date(discoveredAt), severity })} className="bg-[#4a7c59] text-white hover:bg-[#3e6a4b]">保存故障登记</Button></DialogFooter></DialogContent></Dialog></>;
+}
+
+function PartsView({ isAdmin }: { isAdmin: boolean }) {
+  const [open, setOpen] = useState(false); const [name, setName] = useState(""); const [specification, setSpecification] = useState(""); const [stockQuantity, setStockQuantity] = useState("0"); const [safetyStock, setSafetyStock] = useState("0"); const utils = trpc.useUtils(); const rows = trpc.parts.list.useQuery(); const create = trpc.parts.create.useMutation({ onSuccess: () => { toast.success("备件已新增"); setOpen(false); utils.parts.list.invalidate(); utils.dashboard.metrics.invalidate(); } }); const transaction = trpc.parts.recordTransaction.useMutation({ onSuccess: () => { toast.success("库存流水已记录"); utils.parts.list.invalidate(); utils.dashboard.metrics.invalidate(); } });
+  return <><PageHeader eyebrow="库存保障" title="备件 / 耗材管理" description="维护备件名称、规格、库存数量与安全库存，并对每次入库、领用进行留痕。" action={isAdmin ? <Button onClick={() => setOpen(true)} className="bg-[#4a7c59] text-white hover:bg-[#3e6a4b]"><Plus className="mr-2 h-4 w-4" />新增备件</Button> : undefined} /><div className="industrial-card overflow-hidden">{rows.data?.length ? <div className="overflow-x-auto"><table className="w-full min-w-[750px] text-sm"><thead className="bg-[#eff7eb] text-left text-xs text-[#6a7d6a]"><tr>{["名称", "规格", "库存数量", "安全库存", "库存状态", "操作"].map(head => <th key={head} className="px-4 py-3.5 font-medium">{head}</th>)}</tr></thead><tbody className="divide-y divide-[#edf2eb]">{rows.data.map(item => { const atRisk = item.stockQuantity <= item.safetyStock; return <tr key={item.id}><td className="px-4 py-4 font-medium text-[#38543d]">{item.name}</td><td className="px-4 py-4 text-[#627562]">{item.specification}</td><td className="px-4 py-4 font-semibold text-[#314a36]">{item.stockQuantity}</td><td className="px-4 py-4 text-[#627562]">{item.safetyStock}</td><td className="px-4 py-4"><Badge variant="outline" className={atRisk ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}>{atRisk ? "低于安全库存" : "库存充足"}</Badge></td><td className="px-4 py-4"><div className="flex gap-1"><Button size="sm" variant="outline" onClick={() => { const quantity = prompt("请输入入库数量"); if (quantity) transaction.mutate({ partId: item.id, transactionType: "inbound", quantity: Number(quantity) }); }} className="border-[#9bbb9b] text-[#476e50]"><ArrowDownToLine className="mr-1 h-3.5 w-3.5" />入库</Button><Button size="sm" variant="outline" onClick={() => { const quantity = prompt("请输入领用数量"); if (quantity) transaction.mutate({ partId: item.id, transactionType: "outbound", quantity: Number(quantity) }); }} className="border-[#d9c99b] text-[#876a26]"><ArrowUpFromLine className="mr-1 h-3.5 w-3.5" />领用</Button></div></td></tr>})}</tbody></table></div> : <div className="p-6"><EmptyState title="暂无备件或耗材台账" description="管理员可新增备件；后续每次入库与领用都将形成库存流水和操作日志。" /></div>}</div><Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>新增备件 / 耗材</DialogTitle><DialogDescription>请维护备件台账的名称、规格、库存数量与安全库存。</DialogDescription></DialogHeader><div className="grid gap-3 sm:grid-cols-2"><FormInput label="名称" value={name} onChange={setName} /><FormInput label="规格" value={specification} onChange={setSpecification} /><FormInput label="库存数量" type="number" value={stockQuantity} onChange={setStockQuantity} /><FormInput label="安全库存" type="number" value={safetyStock} onChange={setSafetyStock} /></div><DialogFooter><Button disabled={!name || !specification || create.isPending} onClick={() => create.mutate({ name, specification, stockQuantity: Number(stockQuantity), safetyStock: Number(safetyStock) })} className="bg-[#4a7c59] text-white hover:bg-[#3e6a4b]">保存备件</Button></DialogFooter></DialogContent></Dialog></>;
+}
+
+function UsersView() {
+  const utils = trpc.useUtils(); const users = trpc.operations.users.useQuery(); const logs = trpc.operations.list.useQuery(); const changeRole = trpc.operations.updateUserRole.useMutation({ onSuccess: () => { toast.success("角色权限已更新并记入日志"); utils.operations.users.invalidate(); utils.operations.list.invalidate(); } });
+  return <><PageHeader eyebrow="权限与审计" title="用户权限与操作日志" description="系统以管理员与普通用户两类角色控制访问；所有关键业务操作均可在审计日志中追溯。" /><div className="grid gap-5 xl:grid-cols-2"><article className="industrial-card overflow-hidden"><div className="border-b border-[#e5eee2] px-5 py-4"><h2 className="font-semibold text-[#26392a]">用户角色</h2></div>{users.data?.length ? <div className="divide-y divide-[#edf2eb]">{users.data.map(item => <div key={item.id} className="flex items-center justify-between gap-4 p-4"><div><p className="font-medium text-[#314a36]">{item.name ?? "未命名用户"}</p><p className="mt-1 text-xs text-[#829081]">{item.email ?? item.openId}</p></div><Select value={item.role} onValueChange={role => changeRole.mutate({ id: item.id, role: role as "admin" | "user" })}><SelectTrigger className="w-28 border-[#d9e5d6]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="admin">管理员</SelectItem><SelectItem value="user">普通用户</SelectItem></SelectContent></Select></div>)}</div> : <div className="p-5"><EmptyState title="暂无已登录用户" description="用户完成登录后将显示在这里，管理员可以调整其角色。" /></div>}</article><article className="industrial-card overflow-hidden"><div className="border-b border-[#e5eee2] px-5 py-4"><h2 className="font-semibold text-[#26392a]">操作日志</h2></div>{logs.data?.length ? <div className="max-h-[430px] divide-y divide-[#edf2eb] overflow-y-auto">{logs.data.map(item => <div key={item.id} className="p-4"><div className="flex items-center justify-between gap-3"><p className="font-medium text-[#415843]">{item.module} · {item.action}</p><span className="text-xs text-[#829081]">{dateText(item.createdAt)}</span></div><p className="mt-1 text-xs text-[#829081]">{item.targetType}{item.targetId ? ` #${item.targetId}` : ""}{item.detail ? ` · ${item.detail}` : ""}</p></div>)}</div> : <div className="p-5"><EmptyState title="暂无操作日志" description="对设备、保养、维修、备件和角色的关键操作会自动写入此处。" /></div>}</article></div></>;
+}
+
+function InventoryHistory() {
+  const parts = trpc.parts.list.useQuery();
+  const transactions = trpc.parts.transactions.useQuery();
+  const namesById = new Map((parts.data ?? []).map(item => [item.id, item.name]));
+  return <section className="mt-5 industrial-card overflow-hidden"><div className="flex items-center justify-between border-b border-[#e5eee2] px-5 py-4"><div><h2 className="font-semibold text-[#26392a]">备件出入库流水</h2><p className="mt-1 text-xs text-[#829081]">最近 100 条已记录操作</p></div><History className="h-5 w-5 text-[#4a7c59]" /></div>{transactions.data?.length ? <div className="overflow-x-auto"><table className="w-full min-w-[650px] text-sm"><thead className="bg-[#f5f9f2] text-left text-xs text-[#6a7d6a]"><tr>{["时间", "备件", "类型", "数量", "操作人"].map(head => <th key={head} className="px-4 py-3 font-medium">{head}</th>)}</tr></thead><tbody className="divide-y divide-[#edf2eb]">{transactions.data.map(item => <tr key={item.id}><td className="px-4 py-3.5 text-[#627562]">{dateText(item.operatedAt)}</td><td className="px-4 py-3.5 font-medium text-[#38543d]">{namesById.get(item.partId) ?? `备件 #${item.partId}`}</td><td className="px-4 py-3.5"><Badge variant="outline" className={item.transactionType === "inbound" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-700"}>{item.transactionType === "inbound" ? "入库" : "领用"}</Badge></td><td className="px-4 py-3.5 font-semibold text-[#314a36]">{item.quantity}</td><td className="px-4 py-3.5 text-[#627562]">{item.operatorId ? `用户 #${item.operatorId}` : "系统记录"}</td></tr>)}</tbody></table></div> : <div className="p-5"><EmptyState title="暂无出入库流水" description="完成入库或领用后，将在此处保留数量、操作人和操作时间。" /></div>}</section>;
+}
+
+function UnauthorizedView() {
+  return <div className="industrial-card mx-auto mt-16 max-w-xl p-8 text-center"><span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-700"><ShieldCheck className="h-6 w-6" /></span><h1 className="mt-4 text-xl font-semibold text-[#26392a]">无权限访问</h1><p className="mt-2 text-sm leading-6 text-[#728373]">用户权限与操作日志仅对管理员开放。若需访问该模块，请联系系统管理员调整角色。</p></div>;
+}
+
+export default function Home() {
+  const { user } = useAuth(); const [location] = useLocation(); const isAdmin = user?.role === "admin";
+  const content = location === "/equipment" ? <EquipmentView isAdmin={isAdmin} /> : location === "/maintenance" ? <MaintenanceView isAdmin={isAdmin} /> : location === "/repairs" ? <RepairsView /> : location === "/parts" ? <><PartsView isAdmin={isAdmin} /><InventoryHistory /></> : location === "/users" ? (isAdmin ? <UsersView /> : <UnauthorizedView />) : <DashboardView />;
+  return <div className="min-h-full px-1 py-2 lg:px-3">{content}</div>;
 }
