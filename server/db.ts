@@ -17,6 +17,7 @@ import { applyStockTransaction, assertStatusTransition, calculateNextMaintenance
 import { createInventoryWriteSet, createRoleChangeAudit } from "./persistenceWrites";
 import { persistInventoryWriteSet, persistRoleChange } from "./persistenceExecutors";
 import { ENV } from "./_core/env";
+import { assertOwnerRoleIsRetained } from "./authorization";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -355,6 +356,9 @@ export async function listUsers() {
 
 export async function updateUserRole(id: number, role: "admin" | "user", adminId: number) {
   const db = requireDb(await getDb());
+  const targetUser = (await db.select().from(users).where(eq(users.id, id)).limit(1))[0];
+  if (!targetUser) throw new Error("用户不存在");
+  assertOwnerRoleIsRetained({ targetOpenId: targetUser.openId, ownerOpenId: ENV.ownerOpenId, nextRole: role });
   const audit = createRoleChangeAudit({ userId: id, adminId, role });
   await db.transaction(async tx => {
     await persistRoleChange(tx, { userId: id, role, audit });
