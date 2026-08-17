@@ -15,6 +15,27 @@ function getText(row: Record<string, unknown>, field: string) {
   return String(value).trim();
 }
 
+function optionalText(row: Record<string, unknown>, field: string) {
+  const value = String(row[field] ?? "").trim();
+  return value || undefined;
+}
+
+function optionalNumber(row: Record<string, unknown>, field: string) {
+  const value = optionalText(row, field);
+  if (value === undefined) return undefined;
+  const number = Number(value);
+  if (!Number.isFinite(number)) throw new Error(`${field}必须是有效数字`);
+  return number;
+}
+
+function optionalBoolean(row: Record<string, unknown>, field: string) {
+  const value = optionalText(row, field);
+  if (value === undefined) return undefined;
+  if (["是", "yes", "true", "1"].includes(value.toLowerCase())) return true;
+  if (["否", "no", "false", "0"].includes(value.toLowerCase())) return false;
+  throw new Error(`${field}仅支持：是/否`);
+}
+
 function getDate(value: unknown, field: string) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
   if (typeof value === "number") {
@@ -48,6 +69,17 @@ export async function parseEquipmentWorkbook(file: File) {
       process: getText(row, "所属工序"),
       location: getText(row, "位置"),
       status,
+      supplier: optionalText(row, "供应商"),
+      hourlyCapacity: optionalNumber(row, "每小时产能（pcs）"),
+      oee: optionalNumber(row, "OEE"),
+      lowOeeReason: optionalText(row, "OEE偏低原因"),
+      energyConsumption: optionalNumber(row, "能耗（kW）"),
+      quantity: optionalNumber(row, "数量（台）"),
+      unitPrice: optionalNumber(row, "单价（万元）"),
+      depreciationYears: optionalNumber(row, "折旧年数"),
+      lossFactor: optionalNumber(row, "损耗系数"),
+      investmentIncluded: optionalBoolean(row, "计入投资"),
+      notes: optionalText(row, "备注"),
     };
   });
 }

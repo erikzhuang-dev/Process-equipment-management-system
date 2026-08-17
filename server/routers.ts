@@ -11,6 +11,7 @@ import {
   createPart,
   createRepairWorkOrder,
   deleteEquipment,
+  getEquipmentById,
   getDashboardMetrics,
   getStatusHistory,
   importEquipment,
@@ -34,7 +35,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 
-const equipmentSchema = z.object({
+export const equipmentSchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1),
   model: z.string().min(1),
@@ -42,7 +43,28 @@ const equipmentSchema = z.object({
   process: z.string().min(1),
   location: z.string().min(1),
   status: z.enum(["running", "stopped", "maintenance", "scrapped"]).default("running"),
+  supplier: z.string().max(160).optional(),
+  hourlyCapacity: z.coerce.number().int().min(0).nullable().optional(),
+  oee: z.coerce.number().min(0).max(1).nullable().optional(),
+  lowOeeReason: z.string().max(2000).optional(),
+  energyConsumption: z.coerce.number().min(0).nullable().optional(),
+  quantity: z.coerce.number().int().min(0).nullable().optional(),
+  unitPrice: z.coerce.number().min(0).nullable().optional(),
+  depreciationYears: z.coerce.number().int().min(0).nullable().optional(),
+  lossFactor: z.coerce.number().min(0).nullable().optional(),
+  investmentIncluded: z.boolean().nullable().optional(),
+  notes: z.string().max(4000).optional(),
 });
+
+function toEquipmentDbValues(input: z.infer<typeof equipmentSchema>) {
+  return {
+    ...input,
+    oee: input.oee === undefined ? undefined : input.oee === null ? null : String(input.oee),
+    energyConsumption: input.energyConsumption === undefined ? undefined : input.energyConsumption === null ? null : String(input.energyConsumption),
+    unitPrice: input.unitPrice === undefined ? undefined : input.unitPrice === null ? null : String(input.unitPrice),
+    lossFactor: input.lossFactor === undefined ? undefined : input.lossFactor === null ? null : String(input.lossFactor),
+  };
+}
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   try {
@@ -68,9 +90,10 @@ export const appRouter = router({
   equipment: router({
     list: protectedProcedure.input(z.object({ search: z.string().optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(10) })).query(({ input }) => listEquipment(input)),
     export: protectedProcedure.query(() => listAllEquipment()),
-    create: adminProcedure.input(equipmentSchema).mutation(({ input, ctx }) => createEquipment(input, ctx.user.id)),
-    batchImport: adminProcedure.input(z.array(equipmentSchema).min(1)).mutation(({ input, ctx }) => importEquipment(input, ctx.user.id)),
-    update: adminProcedure.input(z.object({ id: z.number().int().positive(), values: equipmentSchema.partial() })).mutation(({ input, ctx }) => updateEquipment(input.id, input.values, ctx.user.id)),
+    detail: protectedProcedure.input(z.object({ id: z.number().int().positive() })).query(({ input }) => getEquipmentById(input.id)),
+    create: adminProcedure.input(equipmentSchema).mutation(({ input, ctx }) => createEquipment(toEquipmentDbValues(input), ctx.user.id)),
+    batchImport: adminProcedure.input(z.array(equipmentSchema).min(1)).mutation(({ input, ctx }) => importEquipment(input.map(toEquipmentDbValues), ctx.user.id)),
+    update: adminProcedure.input(z.object({ id: z.number().int().positive(), values: equipmentSchema.partial() })).mutation(({ input, ctx }) => updateEquipment(input.id, toEquipmentDbValues(input.values as z.infer<typeof equipmentSchema>), ctx.user.id)),
     remove: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input, ctx }) => deleteEquipment(input.id, ctx.user.id)),
     changeStatus: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["running", "stopped", "maintenance", "scrapped"]) })).mutation(({ input, ctx }) => changeEquipmentStatus(input.id, input.status, ctx.user.id)),
     statusHistory: protectedProcedure.input(z.object({ equipmentId: z.number().int().positive() })).query(({ input }) => getStatusHistory(input.equipmentId)),

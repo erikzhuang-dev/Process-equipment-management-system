@@ -17,6 +17,13 @@ describe("Excel 批量导入解析", () => {
     expect(rows).toEqual([{ code: "EQ-001", name: "装配设备", model: "M-01", specification: "S-01", process: "装配", location: "A-01", status: "running" }]);
   });
 
+  it("解析设备详情扩展字段并校验投资布尔值", async () => {
+    const rows = await parseEquipmentWorkbook(workbookFile([{
+      "编号": "EQ-002", "名称": "加工设备", "型号": "M-02", "规格": "S-02", "所属工序": "加工", "位置": "B-01", "状态": "运行中", "供应商": "供应商A", "每小时产能（pcs）": "120", "OEE": "0.88", "OEE偏低原因": "换型频繁", "能耗（kW）": "8.5", "数量（台）": "2", "单价（万元）": "15", "折旧年数": "8", "损耗系数": "0.03", "计入投资": "是", "备注": "按月复核",
+    }]));
+    expect(rows[0]).toMatchObject({ supplier: "供应商A", hourlyCapacity: 120, oee: 0.88, lowOeeReason: "换型频繁", energyConsumption: 8.5, quantity: 2, unitPrice: 15, depreciationYears: 8, lossFactor: 0.03, investmentIncluded: true, notes: "按月复核" });
+  });
+
   it("解析保养与维修记录的指定字段、费用和完成时间", async () => {
     const maintenance = await parseMaintenanceWorkbook(workbookFile([{
       "设备编号": "EQ-001", "执行人": "张工", "完成时间": "2026-08-17T08:00:00.000Z", "保养内容": "润滑检查", "备注": "正常",

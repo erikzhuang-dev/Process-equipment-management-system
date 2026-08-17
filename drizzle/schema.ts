@@ -36,6 +36,17 @@ export const equipment = mysqlTable(
     status: mysqlEnum("status", ["running", "stopped", "maintenance", "scrapped"])
       .default("running")
       .notNull(),
+    supplier: varchar("supplier", { length: 160 }),
+    hourlyCapacity: int("hourlyCapacity"),
+    oee: decimal("oee", { precision: 6, scale: 4 }),
+    lowOeeReason: text("lowOeeReason"),
+    energyConsumption: decimal("energyConsumption", { precision: 12, scale: 3 }),
+    quantity: int("quantity"),
+    unitPrice: decimal("unitPrice", { precision: 14, scale: 2 }),
+    depreciationYears: int("depreciationYears"),
+    lossFactor: decimal("lossFactor", { precision: 8, scale: 4 }),
+    investmentIncluded: boolean("investmentIncluded"),
+    notes: text("notes"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },

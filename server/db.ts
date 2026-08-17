@@ -123,6 +123,11 @@ export async function listAllEquipment() {
   return db.select().from(equipment).orderBy(desc(equipment.updatedAt));
 }
 
+export async function getEquipmentById(id: number) {
+  const db = requireDb(await getDb());
+  return (await db.select().from(equipment).where(eq(equipment.id, id)).limit(1))[0];
+}
+
 export async function createEquipment(input: typeof equipment.$inferInsert, userId: number) {
   const db = requireDb(await getDb());
   const [created] = await db.insert(equipment).values(input).$returningId();
