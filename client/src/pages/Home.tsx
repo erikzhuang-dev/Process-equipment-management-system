@@ -101,7 +101,15 @@ function EquipmentDialog({ initial, onSubmit, trigger }: { initial?: EquipmentFo
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setSaving(true);
-    try { await onSubmit(values); setOpen(false); setValues(initial ?? emptyEquipment); } finally { setSaving(false); }
+    try {
+      await onSubmit(values);
+      setOpen(false);
+      setValues(initial ?? emptyEquipment);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "设备保存失败，请稍后重试");
+    } finally {
+      setSaving(false);
+    }
   };
   return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger asChild>{trigger}</DialogTrigger><DialogContent className="max-w-2xl"><DialogHeader><DialogTitle>{initial ? "编辑设备" : "新增设备"}</DialogTitle><DialogDescription>请完整填写设备台账字段；状态变更会独立保留完整历史记录。</DialogDescription></DialogHeader><form onSubmit={submit} className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><FormInput label="编号" value={values.code} onChange={value => update("code", value)} /><FormInput label="名称" value={values.name} onChange={value => update("name", value)} /><FormInput label="型号" value={values.model} onChange={value => update("model", value)} /><FormInput label="规格" value={values.specification} onChange={value => update("specification", value)} /><FormInput label="所属工序" value={values.process} onChange={value => update("process", value)} /><FormInput label="位置" value={values.location} onChange={value => update("location", value)} /><div className="space-y-1.5"><label className="text-sm font-medium">状态</label><Select value={values.status} onValueChange={value => update("status", value as EquipmentForm["status"])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(statusMeta).map(([key, item]) => <SelectItem key={key} value={key}>{item.label}</SelectItem>)}</SelectContent></Select></div></div><DialogFooter><Button type="submit" disabled={saving} className="bg-[#4a7c59] text-white hover:bg-[#3e6a4b]">{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}保存设备</Button></DialogFooter></form></DialogContent></Dialog>;
 }

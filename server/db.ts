@@ -37,9 +37,27 @@ function requireDb(db: Awaited<ReturnType<typeof getDb>>) {
   return db;
 }
 
-function insertId(result: unknown) {
-  const id = (result as { insertId?: number })?.insertId;
-  if (!id) throw new Error("未能获取新建记录 ID");
+export function extractInsertId(result: unknown) {
+  const header = Array.isArray(result) ? result[0] : result;
+  const id = Number((header as { insertId?: number | string } | undefined)?.insertId);
+  if (!Number.isInteger(id) || id <= 0) throw new Error("未能获取新建记录 ID");
+  return id;
+}
+
+export function resolveInsertId(result: unknown, fallbackId?: number) {
+  try {
+    return extractInsertId(result);
+  } catch (error) {
+    if (fallbackId && Number.isInteger(fallbackId) && fallbackId > 0) return fallbackId;
+    throw error;
+  }
+}
+
+const insertId = extractInsertId;
+
+function requireReturnedId(result: { id: number } | undefined) {
+  const id = Number(result?.id);
+  if (!Number.isInteger(id) || id <= 0) throw new Error("未能获取新建记录 ID");
   return id;
 }
 
@@ -106,8 +124,8 @@ export async function listAllEquipment() {
 
 export async function createEquipment(input: typeof equipment.$inferInsert, userId: number) {
   const db = requireDb(await getDb());
-  const result = await db.insert(equipment).values(input);
-  const id = insertId(result);
+  const [created] = await db.insert(equipment).values(input).$returningId();
+  const id = requireReturnedId(created);
   await writeOperationLog({ userId, module: "设备台账", action: "新增", targetType: "设备", targetId: String(id), detail: input.code });
   return id;
 }
@@ -199,15 +217,15 @@ export async function importMaintenanceRecords(
 
 export async function createMaintenancePlan(input: { equipmentId: number; cycleDays: number; maintenanceContent: string; nextScheduledAt: Date }, userId: number) {
   const db = requireDb(await getDb());
-  const planResult = await db.insert(maintenancePlans).values({ ...input, isActive: true });
-  const planId = insertId(planResult);
-  const workOrderResult = await db.insert(maintenanceWorkOrders).values({
+  const [createdPlan] = await db.insert(maintenancePlans).values({ ...input, isActive: true }).$returningId();
+  const planId = requireReturnedId(createdPlan);
+  const [createdWorkOrder] = await db.insert(maintenanceWorkOrders).values({
     equipmentId: input.equipmentId,
     planId,
     scheduledAt: input.nextScheduledAt,
     maintenanceContent: input.maintenanceContent,
-  });
-  const workOrderId = insertId(workOrderResult);
+  }).$returningId();
+  const workOrderId = requireReturnedId(createdWorkOrder);
   await writeOperationLog({ userId, module: "保养计划", action: "新增并生成工单", targetType: "保养计划", targetId: String(planId), detail: String(workOrderId) });
   return { planId, workOrderId };
 }
@@ -236,8 +254,8 @@ export async function listFaults() {
 
 export async function createFault(input: { equipmentId: number; description: string; discoveredAt: Date; severity: "low" | "medium" | "high" | "critical" }, userId: number) {
   const db = requireDb(await getDb());
-  const result = await db.insert(faults).values(input);
-  const id = insertId(result);
+  const [created] = await db.insert(faults).values(input).$returningId();
+  const id = requireReturnedId(created);
   await writeOperationLog({ userId, module: "故障报修", action: "登记", targetType: "故障", targetId: String(id), detail: input.severity });
   return id;
 }
@@ -276,8 +294,8 @@ export async function importRepairRecords(
 
 export async function createRepairWorkOrder(input: { faultId: number; equipmentId: number; technician?: string; repairContent?: string }, userId: number) {
   const db = requireDb(await getDb());
-  const result = await db.insert(repairWorkOrders).values(input);
-  const id = insertId(result);
+  const [created] = await db.insert(repairWorkOrders).values(input).$returningId();
+  const id = requireReturnedId(created);
   await db.update(faults).set({ status: "in_repair" }).where(eq(faults.id, input.faultId));
   await writeOperationLog({ userId, module: "维修工单", action: "创建", targetType: "维修工单", targetId: String(id) });
   return id;
@@ -309,8 +327,8 @@ export async function listInventoryTransactions() {
 
 export async function createPart(input: { name: string; specification: string; stockQuantity: number; safetyStock: number }, userId: number) {
   const db = requireDb(await getDb());
-  const result = await db.insert(parts).values(input);
-  const id = insertId(result);
+  const [created] = await db.insert(parts).values(input).$returningId();
+  const id = requireReturnedId(created);
   await writeOperationLog({ userId, module: "备件耗材", action: "新增", targetType: "备件", targetId: String(id) });
   return id;
 }
