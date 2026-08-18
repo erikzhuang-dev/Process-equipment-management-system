@@ -20,9 +20,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       document.querySelectorAll<HTMLInputElement>("input[placeholder]").forEach(input => { if (input.placeholder && map[input.placeholder]) input.placeholder = map[input.placeholder]; });
     };
     applyTranslations();
+    const retryTimers = [80, 350, 1000, 2500].map(delay => window.setTimeout(applyTranslations, delay));
     const observer = new MutationObserver(applyTranslations);
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); retryTimers.forEach(timer => window.clearTimeout(timer)); };
   }, [language]);
   return <LanguageContext.Provider value={{ language, setLanguage, toggleLanguage: () => setLanguage(current => current === "zh" ? "en" : "zh") }}>{children}</LanguageContext.Provider>;
 }
