@@ -58,6 +58,10 @@ export function resolveInsertId(result: unknown, fallbackId?: number) {
 
 const insertId = extractInsertId;
 
+export function resolvePersistedUserRole(openId: string, incomingRole: InsertUser["role"] | undefined, ownerOpenId = ENV.ownerOpenId) {
+  return openId === ownerOpenId ? "admin" : incomingRole ?? "user";
+}
+
 export async function listBusinessUnits() {
   const db = requireDb(await getDb());
   return db.select().from(businessUnits);
@@ -102,7 +106,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet[field] = user[field] ?? null;
     }
   });
-  values.role = user.role ?? (user.openId === ENV.ownerOpenId ? "admin" : "user");
+  values.role = resolvePersistedUserRole(user.openId, user.role);
   updateSet.role = values.role;
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }
