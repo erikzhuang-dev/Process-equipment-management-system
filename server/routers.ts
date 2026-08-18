@@ -29,6 +29,10 @@ import {
   listUsers,
   updateUserRole,
   updateEquipment,
+  listBusinessUnits,
+  listFactories,
+  createBusinessUnit,
+  createFactory,
 } from "./db";
 import { assertAdminRole } from "./authorization";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -44,6 +48,8 @@ export const equipmentSchema = z.object({
   location: z.string().min(1),
   status: z.enum(["running", "stopped", "maintenance", "scrapped"]).default("running"),
   supplier: z.string().max(160).optional(),
+  businessUnitId: z.coerce.number().int().positive().nullable().optional(),
+  factoryId: z.coerce.number().int().positive().nullable().optional(),
   hourlyCapacity: z.coerce.number().int().min(0).nullable().optional(),
   oee: z.coerce.number().min(0).max(1).nullable().optional(),
   lowOeeReason: z.string().max(2000).optional(),
@@ -91,6 +97,10 @@ export const appRouter = router({
     list: protectedProcedure.input(z.object({ search: z.string().optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(10) })).query(({ input }) => listEquipment(input)),
     export: protectedProcedure.query(() => listAllEquipment()),
     detail: protectedProcedure.input(z.object({ id: z.number().int().positive() })).query(({ input }) => getEquipmentById(input.id)),
+    masterData: protectedProcedure.query(async () => ({
+      businessUnits: await listBusinessUnits(),
+      factories: await listFactories(),
+    })),
     create: adminProcedure.input(equipmentSchema).mutation(({ input, ctx }) => createEquipment(toEquipmentDbValues(input), ctx.user.id)),
     batchImport: adminProcedure.input(z.array(equipmentSchema).min(1)).mutation(({ input, ctx }) => importEquipment(input.map(toEquipmentDbValues), ctx.user.id)),
     update: adminProcedure.input(z.object({ id: z.number().int().positive(), values: equipmentSchema.partial() })).mutation(({ input, ctx }) => updateEquipment(input.id, toEquipmentDbValues(input.values as z.infer<typeof equipmentSchema>), ctx.user.id)),
@@ -122,6 +132,10 @@ export const appRouter = router({
     list: adminProcedure.query(() => listOperationLogs()),
     users: adminProcedure.query(() => listUsers()),
     updateUserRole: adminProcedure.input(z.object({ id: z.number().int().positive(), role: z.enum(["admin", "user"]) })).mutation(({ input, ctx }) => updateUserRole(input.id, input.role, ctx.user.id)),
+    businessUnits: adminProcedure.query(() => listBusinessUnits()),
+    factories: adminProcedure.query(() => listFactories()),
+    createBusinessUnit: adminProcedure.input(z.object({ code: z.string().min(1).max(32), name: z.string().min(1).max(120), description: z.string().max(300).optional() })).mutation(({ input, ctx }) => createBusinessUnit(input, ctx.user.id)),
+    createFactory: adminProcedure.input(z.object({ code: z.string().min(1).max(32), name: z.string().min(1).max(120), location: z.string().max(160).optional(), businessUnitId: z.number().int().positive().nullable().optional() })).mutation(({ input, ctx }) => createFactory(input, ctx.user.id)),
   }),
 });
 

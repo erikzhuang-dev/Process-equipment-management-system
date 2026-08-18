@@ -1,9 +1,11 @@
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
+  businessUnits,
   equipment,
   equipmentStatusChanges,
   faults,
+  factories,
   InsertUser,
   inventoryTransactions,
   maintenancePlans,
@@ -55,6 +57,32 @@ export function resolveInsertId(result: unknown, fallbackId?: number) {
 }
 
 const insertId = extractInsertId;
+
+export async function listBusinessUnits() {
+  const db = requireDb(await getDb());
+  return db.select().from(businessUnits);
+}
+
+export async function listFactories() {
+  const db = requireDb(await getDb());
+  return db.select().from(factories);
+}
+
+export async function createBusinessUnit(input: { code: string; name: string; description?: string }, userId: number) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(businessUnits).values(input).$returningId();
+  const id = requireReturnedId(result[0]);
+  await writeOperationLog({ userId, module: "主数据", action: "新增BU", targetType: "business_unit", targetId: String(id), detail: `${input.code} · ${input.name}` });
+  return id;
+}
+
+export async function createFactory(input: { code: string; name: string; location?: string; businessUnitId?: number | null }, userId: number) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(factories).values(input).$returningId();
+  const id = requireReturnedId(result[0]);
+  await writeOperationLog({ userId, module: "主数据", action: "新增工厂", targetType: "factory", targetId: String(id), detail: `${input.code} · ${input.name}` });
+  return id;
+}
 
 function requireReturnedId(result: { id: number } | undefined) {
   const id = Number(result?.id);
