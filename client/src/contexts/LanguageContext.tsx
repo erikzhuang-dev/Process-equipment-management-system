@@ -21,9 +21,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     };
     applyTranslations();
     const retryTimers = [80, 350, 1000, 2500].map(delay => window.setTimeout(applyTranslations, delay));
+    const syncTimer = window.setInterval(applyTranslations, 600);
     const observer = new MutationObserver(applyTranslations);
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    return () => { observer.disconnect(); retryTimers.forEach(timer => window.clearTimeout(timer)); };
+    return () => { observer.disconnect(); retryTimers.forEach(timer => window.clearTimeout(timer)); window.clearInterval(syncTimer); };
   }, [language]);
   return <LanguageContext.Provider value={{ language, setLanguage, toggleLanguage: () => setLanguage(current => current === "zh" ? "en" : "zh") }}>{children}</LanguageContext.Provider>;
 }
