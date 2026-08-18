@@ -253,10 +253,10 @@ function EquipmentView({ isAdmin }: { isAdmin: boolean }) {
     const running = (result.data?.items ?? []).filter(item => item.status === "running").length;
     const maintenance = (result.data?.items ?? []).filter(item => item.status === "maintenance").length;
     const units = [
-      { code: "BU1", subtitle: language === "en" ? "Equipment Operations" : "设备运营", count: total, active: running, alert: maintenance },
-      { code: "BU2", subtitle: language === "en" ? "Production Support" : "生产支持", count: 0, active: 0, alert: 0 },
-      { code: "BU3", subtitle: language === "en" ? "Process Improvement" : "工艺改善", count: 0, active: 0, alert: 0 },
-      { code: "BU4", subtitle: language === "en" ? "Utilities & Facilities" : "公用工程", count: 0, active: 0, alert: 0 },
+      { code: "BU1", subtitle: "Injection and Pharma Delivery", count: total, active: running, alert: maintenance },
+      { code: "BU2", subtitle: "Diagnostics", count: 0, active: 0, alert: 0 },
+      { code: "BU3", subtitle: "Diabetes Care", count: 0, active: 0, alert: 0 },
+      { code: "BU4", subtitle: "Vascular Access & Infusion Therapy", count: 0, active: 0, alert: 0 },
     ];
     const section = document.createElement("section");
     section.className = "equipment-business-units mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4";

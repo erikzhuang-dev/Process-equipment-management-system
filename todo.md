@@ -64,3 +64,4 @@
 - [ ] 将设备台账行内详情从命令式 DOM 插入重构为 React 状态驱动的表格展开行，避免列表刷新卸载详情卡片。
 - [ ] 验证行内自动保存触发列表刷新后，展开行、草稿与保存状态仍保持可见且不丢失。
 - [x] 修复 OAuth 登录同步对已有用户角色的默认覆盖，未显式提供角色时必须保留数据库中的管理员或普通用户角色；当前所有者管理员角色已恢复并通过 3 项角色同步规则回归测试。
+- [x] 更新设备台账顶部 BU 卡片名称：BU1–Injection and Pharma Delivery、BU2–Diagnostics、BU3–Diabetes Care、BU4–Vascular Access & Infusion Therapy；已在 1440px 桌面视口复核四项完整显示，BU4 长名称未截断或错位。
