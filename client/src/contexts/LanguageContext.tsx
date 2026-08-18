@@ -12,11 +12,17 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, language); document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
     const map = language === "en" ? translations : reverseTranslations;
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    const nodes: Text[] = []; let node: Node | null;
-    while ((node = walker.nextNode())) nodes.push(node as Text);
-    nodes.forEach(textNode => { const raw = textNode.nodeValue ?? ""; const leading = raw.match(/^\s*/)?.[0] ?? ""; const trailing = raw.match(/\s*$/)?.[0] ?? ""; const core = raw.trim(); const dynamic = language === "en" ? core.replace(/^当前待处理故障\s+(\d+)\s+项$/, "Open faults: $1").replace(/^已完成维修\s+(\d+)\s+项$/, "Completed repairs: $1").replace(/^库存风险提示：\s*(\d+)\s*项备件库存低于或等于安全库存。$/, "Inventory risk: $1 parts are at or below safety stock.").replace(/^共\s*(\d+)\s*条记录$/, "Total $1 records").replace(/^第\s*(\d+)\s*\/\s*(\d+)\s*页$/, "Page $1 / $2") : core; if (map[core] || dynamic !== core) textNode.nodeValue = `${leading}${map[core] ?? dynamic}${trailing}`; });
-    document.querySelectorAll<HTMLInputElement>("input[placeholder]").forEach(input => { if (input.placeholder && map[input.placeholder]) input.placeholder = map[input.placeholder]; });
+    const applyTranslations = () => {
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      const nodes: Text[] = []; let node: Node | null;
+      while ((node = walker.nextNode())) nodes.push(node as Text);
+      nodes.forEach(textNode => { const raw = textNode.nodeValue ?? ""; const leading = raw.match(/^\s*/)?.[0] ?? ""; const trailing = raw.match(/\s*$/)?.[0] ?? ""; const core = raw.trim(); const dynamic = language === "en" ? core.replace(/^当前待处理故障\s+(\d+)\s+项$/, "Open faults: $1").replace(/^已完成维修\s+(\d+)\s+项$/, "Completed repairs: $1").replace(/^工单\s*#(\d+)$/, "Work Order #$1").replace(/^共\s*(\d+)\s*条记录$/, "Total $1 records").replace(/^第\s*(\d+)\s*\/\s*(\d+)\s*页$/, "Page $1 / $2") : core; if (map[core] || dynamic !== core) textNode.nodeValue = `${leading}${map[core] ?? dynamic}${trailing}`; });
+      document.querySelectorAll<HTMLInputElement>("input[placeholder]").forEach(input => { if (input.placeholder && map[input.placeholder]) input.placeholder = map[input.placeholder]; });
+    };
+    applyTranslations();
+    const observer = new MutationObserver(applyTranslations);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
   }, [language]);
   return <LanguageContext.Provider value={{ language, setLanguage, toggleLanguage: () => setLanguage(current => current === "zh" ? "en" : "zh") }}>{children}</LanguageContext.Provider>;
 }
