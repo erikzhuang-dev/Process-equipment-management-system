@@ -58,8 +58,8 @@ export function resolveInsertId(result: unknown, fallbackId?: number) {
 
 const insertId = extractInsertId;
 
-export function resolvePersistedUserRole(openId: string, incomingRole: InsertUser["role"] | undefined, ownerOpenId = ENV.ownerOpenId) {
-  return openId === ownerOpenId ? "admin" : incomingRole ?? "user";
+export function resolvePersistedUserRole(openId: string, incomingRole: InsertUser["role"] | undefined, ownerOpenId = ENV.ownerOpenId, existingRole?: InsertUser["role"] | null) {
+  return openId === ownerOpenId ? "admin" : incomingRole ?? existingRole ?? "user";
 }
 
 export async function listBusinessUnits() {
@@ -98,6 +98,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
   if (!db) return;
+  const existingUser = await db.select({ role: users.role }).from(users).where(eq(users.openId, user.openId)).limit(1);
   const values: InsertUser = { openId: user.openId, lastSignedIn: user.lastSignedIn ?? new Date() };
   const updateSet: Record<string, unknown> = { lastSignedIn: values.lastSignedIn };
   (["name", "email", "loginMethod"] as const).forEach(field => {
@@ -106,7 +107,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet[field] = user[field] ?? null;
     }
   });
-  values.role = resolvePersistedUserRole(user.openId, user.role);
+  values.role = resolvePersistedUserRole(user.openId, user.role, ENV.ownerOpenId, existingUser[0]?.role);
   updateSet.role = values.role;
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
 }

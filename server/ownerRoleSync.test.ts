@@ -10,4 +10,9 @@ describe("项目所有者角色同步", () => {
     expect(resolvePersistedUserRole("standard-open-id", "admin", "owner-open-id")).toBe("admin");
     expect(resolvePersistedUserRole("standard-open-id", undefined, "owner-open-id")).toBe("user");
   });
+
+  it("在 OAuth 登录未显式提供角色时保留已有管理员角色", () => {
+    expect(resolvePersistedUserRole("existing-admin", undefined, "owner-open-id", "admin")).toBe("admin");
+    expect(resolvePersistedUserRole("existing-user", undefined, "owner-open-id", "user")).toBe("user");
+  });
 });
