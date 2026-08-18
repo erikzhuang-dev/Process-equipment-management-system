@@ -148,6 +148,7 @@ function DashboardView() {
 }
 
 function EquipmentView({ isAdmin }: { isAdmin: boolean }) {
+  const { language } = useLanguage();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [historyId, setHistoryId] = useState<number | null>(null);
@@ -167,6 +168,25 @@ function EquipmentView({ isAdmin }: { isAdmin: boolean }) {
   const onImport = async (file?: File) => { if (!file) return; try { await batchImport.mutateAsync(await parseEquipmentWorkbook(file)); } catch (error) { toast.error(error instanceof Error ? error.message : "设备台账导入失败"); } };
   const exportExcel = () => { downloadWorkbook("设备台账.xlsx", "设备台账", (exportData.data ?? []).map(item => ({ "编号": item.code, "名称": item.name, "型号": item.model, "规格": item.specification, "所属工序": item.process, "位置": item.location, "状态": statusMeta[item.status].label, "供应商": item.supplier, "每小时产能（pcs）": item.hourlyCapacity, "OEE": item.oee, "OEE偏低原因": item.lowOeeReason, "能耗（kW）": item.energyConsumption, "数量（台）": item.quantity, "单价（万元）": item.unitPrice, "折旧年数": item.depreciationYears, "损耗系数": item.lossFactor, "计入投资": item.investmentIncluded === null ? "" : item.investmentIncluded ? "是" : "否", "备注": item.notes }))); };
   const maxPage = Math.max(1, Math.ceil((result.data?.total ?? 0) / 8));
+  useEffect(() => {
+    document.querySelectorAll(".equipment-business-units").forEach(node => node.remove());
+    const searchInput = document.querySelector<HTMLInputElement>('input[placeholder*="搜索编号"], input[placeholder*="Search code"]');
+    const registerCard = searchInput?.closest(".industrial-card");
+    if (!registerCard) return;
+    const total = result.data?.total ?? 0;
+    const running = (result.data?.items ?? []).filter(item => item.status === "running").length;
+    const maintenance = (result.data?.items ?? []).filter(item => item.status === "maintenance").length;
+    const units = [
+      { code: "BU1", subtitle: language === "en" ? "Equipment Operations" : "设备运营", count: total, active: running, alert: maintenance },
+      { code: "BU2", subtitle: language === "en" ? "Production Support" : "生产支持", count: 0, active: 0, alert: 0 },
+      { code: "BU3", subtitle: language === "en" ? "Process Improvement" : "工艺改善", count: 0, active: 0, alert: 0 },
+      { code: "BU4", subtitle: language === "en" ? "Utilities & Facilities" : "公用工程", count: 0, active: 0, alert: 0 },
+    ];
+    const section = document.createElement("section");
+    section.className = "equipment-business-units mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4";
+    section.innerHTML = units.map(unit => `<article class="overflow-hidden rounded-[22px] border border-[#cfe4c9] bg-white shadow-[0_12px_28px_rgba(69,111,74,.10)]"><div class="bg-gradient-to-r from-[#98cb91] to-[#84bb7f] px-4 py-3 text-center text-white"><p class="font-semibold tracking-wide">${unit.code}</p><p class="mt-0.5 text-xs text-white/85">${unit.subtitle}</p></div><div class="flex items-center justify-between gap-4 px-5 py-4"><div class="flex h-14 w-14 items-center justify-center rounded-full border-[8px] border-[#eff6ea] text-xs font-semibold text-[#4a7c59]">${unit.code}</div><div class="flex-1 space-y-1 text-xs text-[#718372]"><p class="flex justify-between"><span>${language === "en" ? "Total equipment" : "设备总数"}</span><b class="text-sm text-[#26392a]">${unit.count}</b></p><p class="flex justify-between"><span>${language === "en" ? "Running" : "运行中"}</span><b class="text-sm text-[#4a7c59]">${unit.active}</b></p><p class="flex justify-between"><span>${language === "en" ? "Maintenance" : "维修中"}</span><b class="text-sm text-[#c88625]">${unit.alert}</b></p></div></div></article>`).join("");
+    registerCard.before(section);
+  }, [language, result.data?.items, result.data?.total]);
   useEffect(() => {
     const table = document.querySelector(".industrial-card table");
     if (!table) return;
