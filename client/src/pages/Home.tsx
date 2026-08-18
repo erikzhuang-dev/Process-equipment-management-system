@@ -224,11 +224,18 @@ function EquipmentView({ isAdmin }: { isAdmin: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
   const result = trpc.equipment.list.useQuery({ search: search || undefined, page, pageSize: 8 });
+  const inlineDetailRowRef = useRef<HTMLTableRowElement | null>(null);
+  const inlineDetailRootRef = useRef<ReturnType<typeof createRoot> | null>(null);
+  const inlineDetailItemIdRef = useRef<number | null>(null);
   const exportData = trpc.equipment.export.useQuery();
   const masterData = trpc.equipment.masterData.useQuery();
   const history = trpc.equipment.statusHistory.useQuery({ equipmentId: historyId ?? 1 }, { enabled: historyId !== null });
   const create = trpc.equipment.create.useMutation({ onSuccess: () => { toast.success("设备已新增"); utils.equipment.list.invalidate(); utils.equipment.export.invalidate(); utils.dashboard.metrics.invalidate(); } });
   const update = trpc.equipment.update.useMutation({ onSuccess: () => { utils.equipment.list.invalidate(); utils.equipment.export.invalidate(); } });
+  const inlineUpdate = trpc.equipment.update.useMutation({ onSuccess: () => {
+    utils.equipment.list.invalidate({ search: search || undefined, page, pageSize: 8 });
+    utils.equipment.export.invalidate();
+  } });
   const remove = trpc.equipment.remove.useMutation({ onSuccess: () => { toast.success("设备已删除"); utils.equipment.list.invalidate(); utils.equipment.export.invalidate(); utils.dashboard.metrics.invalidate(); } });
   const changeStatus = trpc.equipment.changeStatus.useMutation({ onSuccess: () => { toast.success("设备状态已变更并留痕"); setStatusId(null); utils.equipment.list.invalidate(); utils.equipment.export.invalidate(); utils.dashboard.metrics.invalidate(); if (historyId) utils.equipment.statusHistory.invalidate({ equipmentId: historyId }); } });
   const batchImport = trpc.equipment.batchImport.useMutation({ onSuccess: data => { toast.success(`已处理 ${data.processed} 条设备台账`); utils.equipment.list.invalidate(); utils.equipment.export.invalidate(); utils.dashboard.metrics.invalidate(); } });
@@ -270,23 +277,43 @@ function EquipmentView({ isAdmin }: { isAdmin: boolean }) {
     return () => table.removeEventListener("click", onRowClick);
   }, [result.data?.items]);
   useEffect(() => {
-    document.querySelectorAll(".equipment-inline-detail").forEach(node => node.remove());
-    if (!expandedEquipmentId) return;
+    const clearInlineDetail = () => {
+      inlineDetailRootRef.current?.unmount();
+      inlineDetailRootRef.current = null;
+      inlineDetailRowRef.current?.remove();
+      inlineDetailRowRef.current = null;
+      inlineDetailItemIdRef.current = null;
+    };
+    if (!expandedEquipmentId) {
+      clearInlineDetail();
+      return;
+    }
     const item = (result.data?.items ?? []).find(entry => entry.id === expandedEquipmentId);
     const table = document.querySelector(".industrial-card table");
     const row = Array.from(table?.querySelectorAll("tbody tr") ?? []).find(entry => entry.querySelector("td")?.textContent?.trim() === item?.code);
-    if (!item || !row) return;
-    const detailRow = document.createElement("tr");
-    detailRow.className = "equipment-inline-detail bg-[#f6fbf3]";
-    const cell = document.createElement("td");
-    cell.colSpan = 8;
-    cell.className = "px-5 py-5";
-    detailRow.appendChild(cell);
-    row.after(detailRow);
-    const root = createRoot(cell);
-    root.render(<InlineEquipmentDetailEditor item={item} businessUnits={masterData.data?.businessUnits ?? []} factories={masterData.data?.factories ?? []} isAdmin={isAdmin} onSave={values => update.mutateAsync({ id: item.id, values: toEquipmentPayload(values) })} />);
-    return () => { root.unmount(); detailRow.remove(); };
-  }, [expandedEquipmentId, isAdmin, masterData.data?.businessUnits, masterData.data?.factories, result.data?.items, update]);
+    if (!item || !row) {
+      clearInlineDetail();
+      return;
+    }
+    if (!inlineDetailRootRef.current || inlineDetailItemIdRef.current !== item.id) {
+      clearInlineDetail();
+      const detailRow = document.createElement("tr");
+      detailRow.className = "equipment-inline-detail bg-[#f6fbf3]";
+      const cell = document.createElement("td");
+      cell.colSpan = 8;
+      cell.className = "px-5 py-5";
+      detailRow.appendChild(cell);
+      inlineDetailRowRef.current = detailRow;
+      inlineDetailRootRef.current = createRoot(cell);
+      inlineDetailItemIdRef.current = item.id;
+    }
+    if (inlineDetailRowRef.current?.previousSibling !== row) row.after(inlineDetailRowRef.current!);
+    inlineDetailRootRef.current.render(<InlineEquipmentDetailEditor item={item} businessUnits={masterData.data?.businessUnits ?? []} factories={masterData.data?.factories ?? []} isAdmin={isAdmin} onSave={values => inlineUpdate.mutateAsync({ id: item.id, values: toEquipmentPayload(values) })} />);
+  }, [expandedEquipmentId, inlineUpdate.mutateAsync, isAdmin, masterData.data?.businessUnits, masterData.data?.factories, result.data?.items]);
+  useEffect(() => () => {
+    inlineDetailRootRef.current?.unmount();
+    inlineDetailRowRef.current?.remove();
+  }, []);
   return <><PageHeader eyebrow="设备全生命周期" title="设备台账管理" description="维护生产设备基本信息，并对设备状态变更进行完整追溯。" action={<div className="flex flex-wrap gap-2"><input ref={inputRef} className="hidden" type="file" accept=".xlsx,.xls" onChange={event => onImport(event.target.files?.[0])} />{isAdmin && <Button variant="outline" onClick={() => inputRef.current?.click()} className="border-[#9bbb9b] text-[#476e50]"><ArrowUpFromLine className="mr-2 h-4 w-4" />导入 Excel</Button>}<Button variant="outline" onClick={exportExcel} disabled={!exportData.data?.length} className="border-[#9bbb9b] text-[#476e50]"><ArrowDownToLine className="mr-2 h-4 w-4" />导出 Excel</Button>{isAdmin && <EquipmentDialog onSubmit={values => create.mutateAsync(toEquipmentPayload(values))} trigger={<Button className="bg-[#4a7c59] text-white hover:bg-[#3e6a4b]"><Plus className="mr-2 h-4 w-4" />新增设备</Button>} />}</div>} /><div className="industrial-card overflow-hidden"><div className="flex flex-col gap-3 border-b border-[#e5eee2] p-4 md:flex-row md:items-center md:justify-between"><div className="relative w-full md:max-w-sm"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a9a89]" /><Input value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="搜索编号、名称或所属工序" className="border-[#d9e5d6] bg-[#fbfdf9] pl-9" /></div><span className="text-sm text-[#718372]">共 <strong className="font-semibold text-[#38543d]">{result.data?.total ?? 0}</strong> 条记录</span></div>{result.data?.items.length ? <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-sm"><thead className="bg-[#eff7eb] text-left text-xs font-medium text-[#6a7d6a]"><tr>{["编号", "名称", "型号", "规格", "所属工序", "位置", "状态", "操作"].map(head => <th key={head} className="px-4 py-3.5 font-medium">{head}</th>)}</tr></thead><tbody className="divide-y divide-[#edf2eb]">{result.data.items.map(item => <tr key={item.id} className="transition-colors hover:bg-[#fbfdf9]"><td className="px-4 py-4 font-medium text-[#34513a]">{item.code}</td><td className="px-4 py-4 text-[#2d3b2d]">{item.name}</td><td className="px-4 py-4 text-[#627562]">{item.model}</td><td className="px-4 py-4 text-[#627562]">{item.specification}</td><td className="px-4 py-4 text-[#627562]">{item.process}</td><td className="px-4 py-4 text-[#627562]">{item.location}</td><td className="px-4 py-4"><Badge variant="outline" className={statusMeta[item.status].className}>{statusMeta[item.status].label}</Badge></td><td className="px-4 py-4"><div className="flex items-center gap-1"><Button size="sm" variant="ghost" onClick={() => navigate(`/equipment/${item.id}`)} className="h-8 px-2 text-[#56745b]">详情</Button><Button size="sm" variant="ghost" onClick={() => setHistoryId(item.id)} className="h-8 px-2 text-[#56745b]">历史</Button><Button size="sm" variant="ghost" onClick={() => setStatusId(item.id)} className="h-8 px-2 text-[#56745b]">状态</Button>{isAdmin && <EquipmentDialog initial={toEquipmentForm(item)} onSubmit={values => update.mutateAsync({ id: item.id, values: toEquipmentPayload(values) })} trigger={<Button size="sm" variant="ghost" className="h-8 px-2 text-[#56745b]">编辑</Button>} />}{isAdmin && <Button size="sm" variant="ghost" onClick={() => { if (confirm(`确定删除设备“${item.name}”吗？`)) remove.mutate({ id: item.id }); }} className="h-8 px-2 text-rose-600">删除</Button>}</div></td></tr>)}</tbody></table></div> : <div className="p-6"><EmptyState title="暂无设备台账" description="管理员可新增设备，或按标准字段导入 Excel 台账；系统不会预置虚构设备数据。" /></div>}<div className="flex items-center justify-between border-t border-[#e5eee2] px-4 py-3 text-sm text-[#718372]"><span>第 {page} / {maxPage} 页</span><div className="flex gap-1"><Button variant="outline" size="icon" disabled={page <= 1} onClick={() => setPage(current => current - 1)}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="icon" disabled={page >= maxPage} onClick={() => setPage(current => current + 1)}><ChevronRight className="h-4 w-4" /></Button></div></div></div><Dialog open={historyId !== null} onOpenChange={open => !open && setHistoryId(null)}><DialogContent><DialogHeader><DialogTitle>设备状态变更历史</DialogTitle><DialogDescription>每次状态变更均记录变更前后状态、变更人及时间。</DialogDescription></DialogHeader><div className="max-h-80 space-y-2 overflow-y-auto">{history.data?.length ? history.data.map(item => <div key={item.id} className="rounded-xl bg-[#f5f9f2] p-3 text-sm text-[#526652]"><strong>{item.fromStatus ? statusMeta[item.fromStatus].label : "初始状态"}</strong> → <strong>{statusMeta[item.toStatus].label}</strong><span className="ml-2 text-xs text-[#829081]">{dateText(item.changedAt)}</span></div>) : <EmptyState title="暂无状态变更记录" description="初始登记后的状态变更将在此处显示。" />}</div></DialogContent></Dialog><Dialog open={statusId !== null} onOpenChange={open => !open && setStatusId(null)}><DialogContent><DialogHeader><DialogTitle>变更设备状态</DialogTitle><DialogDescription>状态变更会自动写入设备状态历史和操作日志。</DialogDescription></DialogHeader><div className="grid grid-cols-2 gap-2">{Object.entries(statusMeta).map(([key, item]) => <Button key={key} variant="outline" disabled={changeStatus.isPending} onClick={() => statusId && changeStatus.mutate({ id: statusId, status: key as EquipmentForm["status"] })} className="justify-start border-[#d9e5d6] hover:bg-[#eff7eb]"><span className={`mr-2 h-2 w-2 rounded-full ${item.className.split(" ")[0]}`} />{item.label}</Button>)}</div></DialogContent></Dialog></>;
 }
 
