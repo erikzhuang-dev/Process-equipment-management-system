@@ -30,7 +30,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth)); }, [sidebarWidth]);
   if (loading) return <DashboardLayoutSkeleton />;
   if (!user) return <div className="equipment-login min-h-screen"><div className="industrial-card mx-auto flex max-w-md flex-col items-center gap-6 p-9 text-center"><span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#dcebd8] text-[#3e704b]"><HardHat className="h-7 w-7" /></span><div><p className="mb-2 text-xs font-semibold tracking-[0.18em] text-[#4a7c59]">PROCESS EQUIPMENT</p><h1 className="text-2xl font-semibold text-[#233428]">生产工艺设备管理信息系统</h1><p className="mt-3 text-sm leading-6 text-[#708171]">登录后可使用设备全生命周期管理、工单流转、库存追溯和数据仪表盘。</p></div><Button onClick={() => startLogin()} size="lg" className="w-full bg-[#4a7c59] text-white hover:bg-[#3e6a4b]">登录系统</Button></div></div>;
-  return <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}><DashboardLayoutContent setSidebarWidth={setSidebarWidth}>{children}</DashboardLayoutContent></SidebarProvider>;
+  return <SidebarProvider defaultOpen={false} style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}><DashboardLayoutContent setSidebarWidth={setSidebarWidth}>{children}</DashboardLayoutContent></SidebarProvider>;
 }
 
 function DashboardLayoutContent({ children, setSidebarWidth }: { children: React.ReactNode; setSidebarWidth: (width: number) => void }) {
