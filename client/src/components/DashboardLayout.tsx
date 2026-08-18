@@ -12,12 +12,12 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 
 const menuItems = [
-  { icon: Gauge, label: "运营仪表盘", labelEn: "Operations Dashboard", path: "/" },
   { icon: ClipboardList, label: "设备台账", labelEn: "Equipment Register", path: "/equipment" },
   { icon: Settings2, label: "保养计划与工单", labelEn: "Maintenance Plans & Orders", path: "/maintenance" },
   { icon: Wrench, label: "故障与维修", labelEn: "Faults & Repairs", path: "/repairs" },
   { icon: Boxes, label: "备件 / 耗材", labelEn: "Parts & Consumables", path: "/parts" },
   { icon: ShieldCheck, label: "用户权限与日志", labelEn: "Users & Audit Log", path: "/users", adminOnly: true },
+  { icon: Gauge, label: "运营仪表盘", labelEn: "Operations Dashboard", path: "/" },
 ];
 const SIDEBAR_WIDTH_KEY = "equipment-sidebar-width";
 const DEFAULT_WIDTH = 264;
