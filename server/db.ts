@@ -13,6 +13,7 @@ import {
   operationLogs,
   parts,
   repairWorkOrders,
+  suppliers,
   users,
 } from "../drizzle/schema";
 import { applyStockTransaction, assertStatusTransition, calculateNextMaintenanceDate, type EquipmentStatus } from "./domainRules";
@@ -72,6 +73,11 @@ export async function listFactories() {
   return db.select().from(factories);
 }
 
+export async function listSuppliers() {
+  const db = requireDb(await getDb());
+  return db.select().from(suppliers).orderBy(suppliers.name);
+}
+
 export async function createBusinessUnit(input: { code: string; name: string; description?: string }, userId: number) {
   const db = requireDb(await getDb());
   const result = await db.insert(businessUnits).values(input).$returningId();
@@ -86,6 +92,31 @@ export async function createFactory(input: { code: string; name: string; locatio
   const id = requireReturnedId(result[0]);
   await writeOperationLog({ userId, module: "主数据", action: "新增工厂", targetType: "factory", targetId: String(id), detail: `${input.code} · ${input.name}` });
   return id;
+}
+
+export async function createSupplier(input: { code: string; name: string; contactName?: string; phone?: string; email?: string; address?: string }, userId: number) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(suppliers).values(input).$returningId();
+  const id = requireReturnedId(result[0]);
+  await writeOperationLog({ userId, module: "主数据", action: "新增供应商", targetType: "supplier", targetId: String(id), detail: `${input.code} · ${input.name}` });
+  return id;
+}
+
+export async function updateSupplier(id: number, input: Partial<{ code: string; name: string; contactName: string | null; phone: string | null; email: string | null; address: string | null }>, userId: number) {
+  const db = requireDb(await getDb());
+  await db.update(suppliers).set(input).where(eq(suppliers.id, id));
+  await writeOperationLog({ userId, module: "主数据", action: "编辑供应商", targetType: "supplier", targetId: String(id), detail: input.name ?? input.code ?? null });
+}
+
+export async function deleteSupplier(id: number, userId: number) {
+  const db = requireDb(await getDb());
+  const supplier = (await db.select().from(suppliers).where(eq(suppliers.id, id)).limit(1))[0];
+  if (!supplier) throw new Error("供应商不存在");
+  await db.transaction(async tx => {
+    await tx.update(equipment).set({ supplierId: null }).where(eq(equipment.supplierId, id));
+    await tx.delete(suppliers).where(eq(suppliers.id, id));
+    await tx.insert(operationLogs).values({ userId, module: "主数据", action: "删除供应商", targetType: "supplier", targetId: String(id), detail: `${supplier.code} · ${supplier.name}` });
+  });
 }
 
 function requireReturnedId(result: { id: number } | undefined) {
@@ -138,12 +169,14 @@ export async function writeOperationLog(input: {
   });
 }
 
-export async function listEquipment(input: { search?: string; page: number; pageSize: number }) {
+export async function listEquipment(input: { search?: string; businessUnitId?: number; page: number; pageSize: number }) {
   const db = requireDb(await getDb());
   const search = input.search?.trim();
-  const whereClause = search
+  const searchClause = search
     ? or(like(equipment.code, `%${search}%`), like(equipment.name, `%${search}%`), like(equipment.process, `%${search}%`))
     : undefined;
+  const businessUnitClause = input.businessUnitId ? eq(equipment.businessUnitId, input.businessUnitId) : undefined;
+  const whereClause = searchClause && businessUnitClause ? and(searchClause, businessUnitClause) : searchClause ?? businessUnitClause;
   const [items, totalRows] = await Promise.all([
     db.select().from(equipment).where(whereClause).orderBy(desc(equipment.updatedAt)).limit(input.pageSize).offset((input.page - 1) * input.pageSize),
     db.select({ count: sql<number>`count(*)` }).from(equipment).where(whereClause),

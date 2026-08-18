@@ -44,6 +44,19 @@ export const factories = mysqlTable("factories", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const suppliers = mysqlTable("suppliers", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 32 }).notNull().unique(),
+  name: varchar("name", { length: 160 }).notNull(),
+  contactName: varchar("contactName", { length: 120 }),
+  phone: varchar("phone", { length: 64 }),
+  email: varchar("email", { length: 160 }),
+  address: varchar("address", { length: 300 }),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("supplier_name_index").on(table.name)]);
+
 export const equipment = mysqlTable(
   "equipment",
   {
@@ -58,6 +71,7 @@ export const equipment = mysqlTable(
       .default("running")
       .notNull(),
     supplier: varchar("supplier", { length: 160 }),
+    supplierId: int("supplierId"),
     businessUnitId: int("businessUnitId"),
     factoryId: int("factoryId"),
     hourlyCapacity: int("hourlyCapacity"),
