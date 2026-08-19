@@ -28,3 +28,21 @@
 针对 BU1 点击后的初始文本提取短暂显示空态，已在同一管理员会话中重新执行并观察稳定渲染结果。BU1 卡片处于筛选状态后，页面清楚显示“共 4 条记录”，清单为 `PEM-VAL-001`、`PEM-VAL-003`、`PEM-VAL-002` 和既有 `QA-PEM-001`；统计与实际清单一致。此前“共 0 条记录”的文本是点击后异步查询未完成时的瞬时提取，不是数据库或筛选逻辑缺陷。
 
 管理员生产仪表盘在查询稳定后，设备总数显示 11、在线率 100%、故障率 0%、保养完成率 50%，并显示已完成维修 1 项；设备状态分布为运行中 11、其余状态 0，近期保养工单显示一条待执行和一条已完成。该结果与设备台账总数、BU 汇总及数据库统计一致。
+
+在版本 `ba62a5b2` 发布后，管理员以英文模式重新打开设备台账仍观察到分页为“Page 1 / 2 页”。该结果已记录为待定位问题：单元与 jsdom DOM 测试通过，但生产页面未完全反映末尾空字符串映射，需要进一步排查浏览器缓存或分页渲染层。
+
+进一步在同一管理员会话等待语言观察器执行并读取页面 DOM 后，分页仍为“Page 1 / 2 页”。因此该现象不是短暂加载状态；后续将把分页从全局 DOM 文本替换迁移为组件的 React 状态驱动文案，以消除分段节点与空字符串替换的不确定性。
+
+在自动发布边缘缓存刷新后，以独立查询参数重新加载生产设备台账，英文分页已稳定显示为“Page 1 / 2”。点击 BU1 后，页面显示英文筛选说明“Filtering equipment list · Click again to clear”、英文清除按钮“Clear BU1 filter”、英文分页“Page 1 / 1”，并在稳定结果中显示 4 条 BU1 设备（`PEM-VAL-001`、`PEM-VAL-003`、`PEM-VAL-002`、`QA-PEM-001`）。初始文本提取的空态属于异步查询完成前的瞬态；对应的英文 BU 空态标题与说明也已正确渲染为“BU1 has no equipment”和“This business unit has no assigned equipment. Clear the filter to view all equipment.”
+
+英文页面进一步实际筛选 BU2 和 BU3：BU2 稳定显示 2 条（`PEM-VAL-005`、`PEM-VAL-004`），BU3 稳定显示 2 条（`PEM-VAL-007`、`PEM-VAL-006`）。两个筛选状态均显示相应英文清除按钮、英文筛选提示和“Page 1 / 1”，与各 BU 概览卡片数量一致。
+
+BU4 稳定筛选显示 3 条（`PEM-VAL-010`、`PEM-VAL-009`、`PEM-VAL-008`），并显示“Total 3 records”“Clear BU4 filter”及“Page 1 / 1”。至此，BU1–BU4 的生产卡片筛选均已在管理员英文页面完成实际验证，清单数量分别为 4、2、2、3，与概览卡片和设备总数 11 一致。
+
+管理员英文运营仪表盘查询稳定后显示：Equipment Total 11、Online Rate 100%、Fault Rate 0%、Maintenance Completion 50%、Completed repairs 1；状态分布为 Running 11、Stopped 0、Maintenance 0、Scrapped 0，维修趋势显示 1 个已完成维修点，最近保养工单显示 Work Order #2 Pending 与 Work Order #1 Completed。该生产页面结果与台账总数、BU 筛选结果和数据库复核一致。
+
+管理员会话恢复后重新验证 BU1：稳定页面显示“Total 4 records”“Clear BU1 filter”和“Page 1 / 1”，清单为 `PEM-VAL-001`、`PEM-VAL-003`、`PEM-VAL-002` 与 `QA-PEM-001`。该结果补齐了 BU1 的原始稳定态浏览器证据。
+
+随后重新验证 BU2：稳定页面显示“Total 2 records”“Clear BU2 filter”和“Page 1 / 1”，清单为 `PEM-VAL-005` 与 `PEM-VAL-004`。该结果补齐了 BU2 的原始稳定态浏览器证据；结合已记录的 BU3=2 与 BU4=3，四个 BU 的管理员生产筛选证据现已完整。
+
+管理员在英文生产台账实际点击“Export Excel”后，页面右上方立即显示绿色成功提示“Equipment register exported”。该提示与此前已验证的 11 行、26 列导出工作簿相互印证。尝试访问 `chrome://downloads/` 以追加浏览器内部下载列表时，浏览器连接返回“Receiving end does not exist”，因此下载列表本身无法读取；导出触发成功与实际工作簿文件校验均已保留。
