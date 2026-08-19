@@ -150,6 +150,31 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
+export const PUBLIC_ADMIN_OPEN_ID = "public-admin-workstation";
+
+export async function getPublicAdministrator() {
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const existing = (await db.select().from(users).where(eq(users.openId, PUBLIC_ADMIN_OPEN_ID)).limit(1))[0];
+  if (!existing) {
+    await db.insert(users).values({
+      openId: PUBLIC_ADMIN_OPEN_ID,
+      name: "公开管理员工作站",
+      email: null,
+      loginMethod: "public-access",
+      role: "admin",
+      lastSignedIn: new Date(),
+    });
+  } else if (existing.role !== "admin") {
+    await db.update(users).set({ role: "admin", lastSignedIn: new Date() }).where(eq(users.id, existing.id));
+  } else {
+    await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, existing.id));
+  }
+
+  return (await db.select().from(users).where(eq(users.openId, PUBLIC_ADMIN_OPEN_ID)).limit(1))[0];
+}
+
 export async function writeOperationLog(input: {
   userId?: number | null;
   module: string;

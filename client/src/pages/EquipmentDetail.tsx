@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +58,6 @@ function DetailEditor({ item, businessUnits, factories, suppliers, onClose }: { 
 }
 
 export default function EquipmentDetail() {
-  const { user } = useAuth();
   const { language } = useLanguage();
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
@@ -67,7 +65,7 @@ export default function EquipmentDetail() {
   const detail = trpc.equipment.detail.useQuery({ id }, { enabled: Number.isInteger(id) && id > 0 });
   const masterData = trpc.equipment.masterData.useQuery();
   useEffect(() => setEditing(false), [id]);
-  const isAdmin = user?.role === "admin";
+  const isAdmin = true;
   const item = detail.data;
   const detailData = useMemo(() => {
     if (!item) return null;

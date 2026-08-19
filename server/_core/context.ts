@@ -1,5 +1,6 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
+import { getPublicAdministrator } from "../db";
 import { sdk } from "./sdk";
 
 export type TrpcContext = {
@@ -16,8 +17,9 @@ export async function createContext(
   try {
     user = await sdk.authenticateRequest(opts.req);
   } catch (error) {
-    // Authentication is optional for public procedures.
-    user = null;
+    // The system is intentionally configured as an unauthenticated internal workstation.
+    // Anonymous requests execute under a dedicated, auditable administrator account.
+    user = (await getPublicAdministrator()) ?? null;
   }
 
   return {

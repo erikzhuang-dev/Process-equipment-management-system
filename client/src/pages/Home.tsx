@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -377,7 +376,7 @@ function UnauthorizedView() {
 }
 
 export default function Home() {
-  const { user } = useAuth(); const [location] = useLocation(); const isAdmin = user?.role === "admin";
+  const [location] = useLocation(); const isAdmin = true;
   const content = location === "/equipment" ? <EquipmentView isAdmin={isAdmin} /> : location === "/maintenance" ? <MaintenanceView isAdmin={isAdmin} /> : location === "/repairs" ? <RepairsView /> : location === "/parts" ? <><PartsView isAdmin={isAdmin} /><InventoryHistory /></> : location === "/users" ? (isAdmin ? <UsersView /> : <UnauthorizedView />) : <DashboardView />;
   return <div className="min-h-full px-1 py-2 lg:px-3">{content}</div>;
 }
