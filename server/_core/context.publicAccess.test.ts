@@ -33,6 +33,14 @@ describe("公开管理员上下文", () => {
     expect(mocks.getPublicAdministrator).toHaveBeenCalledOnce();
   });
 
+  it("认证 SDK 返回空身份时同样使用公开管理员身份", async () => {
+    mocks.authenticateRequest.mockResolvedValue(null);
+    mocks.getPublicAdministrator.mockResolvedValue(publicAdministrator);
+    const ctx = await createContext({ req: {} as never, res: {} as never });
+    expect(ctx.user).toEqual(publicAdministrator);
+    expect(mocks.getPublicAdministrator).toHaveBeenCalledOnce();
+  });
+
   it("已有有效登录会话时保留原身份", async () => {
     const signedInUser = { ...publicAdministrator, id: 7, openId: "signed-in-admin", name: "Existing Admin" };
     mocks.authenticateRequest.mockResolvedValue(signedInUser);

@@ -17,10 +17,13 @@ export async function createContext(
   try {
     user = await sdk.authenticateRequest(opts.req);
   } catch (error) {
-    // The system is intentionally configured as an unauthenticated internal workstation.
-    // Anonymous requests execute under a dedicated, auditable administrator account.
-    user = (await getPublicAdministrator()) ?? null;
+    user = null;
   }
+
+  // The system is intentionally configured as an unauthenticated internal workstation.
+  // SDK authentication returns null in some no-session cases and throws in others.
+  // Both cases must execute under a dedicated, auditable administrator account.
+  if (!user) user = (await getPublicAdministrator()) ?? null;
 
   return {
     req: opts.req,
