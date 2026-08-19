@@ -214,22 +214,51 @@ export async function deleteEquipment(id: number, userId: number) {
   await writeOperationLog({ userId, module: "设备台账", action: "删除", targetType: "设备", targetId: String(id) });
 }
 
-export async function importEquipment(
-  rows: Array<{ code: string; name: string; model: string; specification: string; process: string; location: string; status: EquipmentStatus }>,
-  userId: number,
-) {
+type EquipmentImportRow = typeof equipment.$inferInsert & {
+  businessUnitCode?: string;
+  factoryCode?: string;
+  supplierCode?: string;
+};
+
+export async function importEquipment(rows: EquipmentImportRow[], userId: number) {
   const db = requireDb(await getDb());
   const uniqueCodes = new Set(rows.map(row => row.code));
   if (uniqueCodes.size !== rows.length) throw new Error("导入文件内存在重复的设备编号");
-  const existingRows = await db.select().from(equipment);
+  const [existingRows, businessUnitRows, factoryRows, supplierRows] = await Promise.all([
+    db.select().from(equipment),
+    db.select().from(businessUnits),
+    db.select().from(factories),
+    db.select().from(suppliers),
+  ]);
   const existingByCode = new Map(existingRows.map(row => [row.code, row]));
+  const businessUnitByCode = new Map(businessUnitRows.map(row => [row.code, row]));
+  const factoryByCode = new Map(factoryRows.map(row => [row.code, row]));
+  const supplierByCode = new Map(supplierRows.map(row => [row.code, row]));
   await db.transaction(async tx => {
     for (const row of rows) {
-      const existing = existingByCode.get(row.code);
+      const { businessUnitCode, factoryCode, supplierCode, ...values } = row;
+      const businessUnit = businessUnitCode ? businessUnitByCode.get(businessUnitCode) : undefined;
+      const factory = factoryCode ? factoryByCode.get(factoryCode) : undefined;
+      const supplier = supplierCode ? supplierByCode.get(supplierCode) : undefined;
+      if (businessUnitCode && !businessUnit) throw new Error(`未找到 BU 编码：${businessUnitCode}`);
+      if (factoryCode && !factory) throw new Error(`未找到工厂编码：${factoryCode}`);
+      if (supplierCode && !supplier) throw new Error(`未找到供应商编码：${supplierCode}`);
+      const businessUnitId = businessUnit?.id ?? values.businessUnitId ?? null;
+      if (factory?.businessUnitId && businessUnitId && factory.businessUnitId !== businessUnitId) {
+        throw new Error(`工厂 ${factory.code} 与 BU ${businessUnitCode} 的归属不一致`);
+      }
+      const normalized = {
+        ...values,
+        businessUnitId,
+        factoryId: factory?.id ?? values.factoryId ?? null,
+        supplierId: supplier?.id ?? values.supplierId ?? null,
+        supplier: supplier?.name ?? values.supplier ?? null,
+      };
+      const existing = existingByCode.get(values.code);
       if (existing) {
-        await tx.update(equipment).set(row).where(eq(equipment.id, existing.id));
+        await tx.update(equipment).set(normalized).where(eq(equipment.id, existing.id));
       } else {
-        await tx.insert(equipment).values(row);
+        await tx.insert(equipment).values(normalized);
       }
     }
     await tx.insert(operationLogs).values({ userId, module: "设备台账", action: "批量导入", targetType: "设备", detail: String(rows.length) });

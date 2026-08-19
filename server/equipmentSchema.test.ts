@@ -16,6 +16,15 @@ describe("设备详情字段接口校验", () => {
     expect(result.data).toMatchObject({ businessUnitId: 2, factoryId: 7, quantity: 3, investmentIncluded: true });
   });
 
+  it("接受生命周期详情字段并拒绝无效关键等级", () => {
+    const valid = equipmentSchema.safeParse({ ...baseEquipment, assetCategory: "注塑成型设备", criticality: "A", responsibleOwner: "王工", commissionedAt: "2024-01-15", warrantyExpiresAt: "2027-01-14" });
+    expect(valid.success).toBe(true);
+    if (valid.success) {
+      expect(valid.data.commissionedAt?.toISOString()).toBe("2024-01-15T00:00:00.000Z");
+    }
+    expect(equipmentSchema.safeParse({ ...baseEquipment, criticality: "D" }).success).toBe(false);
+  });
+
   it("拒绝 OEE 超出 0 到 1 的范围以及负数运营与投资数值", () => {
     expect(equipmentSchema.safeParse({ ...baseEquipment, oee: 1.01 }).success).toBe(false);
     expect(equipmentSchema.safeParse({ ...baseEquipment, quantity: -1 }).success).toBe(false);

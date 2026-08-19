@@ -36,6 +36,20 @@ function optionalBoolean(row: Record<string, unknown>, field: string) {
   throw new Error(`${field}仅支持：是/否`);
 }
 
+function optionalDate(row: Record<string, unknown>, field: string) {
+  const value = row[field];
+  if (value === null || value === undefined || String(value).trim() === "") return undefined;
+  return getDate(value, field);
+}
+
+function optionalCriticality(row: Record<string, unknown>) {
+  const value = optionalText(row, "关键等级");
+  if (value === undefined) return undefined;
+  const normalized = value.toUpperCase();
+  if (["A", "B", "C"].includes(normalized)) return normalized as "A" | "B" | "C";
+  throw new Error("关键等级仅支持：A/B/C");
+}
+
 function getDate(value: unknown, field: string) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
   if (typeof value === "number") {
@@ -70,6 +84,14 @@ export async function parseEquipmentWorkbook(file: File) {
       location: getText(row, "位置"),
       status,
       supplier: optionalText(row, "供应商"),
+      businessUnitCode: optionalText(row, "BU编码"),
+      factoryCode: optionalText(row, "工厂编码"),
+      supplierCode: optionalText(row, "供应商编码"),
+      assetCategory: optionalText(row, "资产类别"),
+      criticality: optionalCriticality(row),
+      responsibleOwner: optionalText(row, "责任人"),
+      commissionedAt: optionalDate(row, "启用日期"),
+      warrantyExpiresAt: optionalDate(row, "保修到期日"),
       hourlyCapacity: optionalNumber(row, "每小时产能（pcs）"),
       oee: optionalNumber(row, "OEE"),
       lowOeeReason: optionalText(row, "OEE偏低原因"),

@@ -55,6 +55,11 @@ export const equipmentSchema = z.object({
   supplierId: z.coerce.number().int().positive().nullable().optional(),
   businessUnitId: z.coerce.number().int().positive().nullable().optional(),
   factoryId: z.coerce.number().int().positive().nullable().optional(),
+  assetCategory: z.string().max(80).optional(),
+  criticality: z.enum(["A", "B", "C"]).nullable().optional(),
+  responsibleOwner: z.string().max(120).optional(),
+  commissionedAt: z.coerce.date().nullable().optional(),
+  warrantyExpiresAt: z.coerce.date().nullable().optional(),
   hourlyCapacity: z.coerce.number().int().min(0).nullable().optional(),
   oee: z.coerce.number().min(0).max(1).nullable().optional(),
   lowOeeReason: z.string().max(2000).optional(),
@@ -76,6 +81,12 @@ function toEquipmentDbValues(input: z.infer<typeof equipmentSchema>) {
     lossFactor: input.lossFactor === undefined ? undefined : input.lossFactor === null ? null : String(input.lossFactor),
   };
 }
+
+const equipmentImportSchema = equipmentSchema.extend({
+  businessUnitCode: z.string().max(32).optional(),
+  factoryCode: z.string().max(32).optional(),
+  supplierCode: z.string().max(32).optional(),
+});
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   try {
@@ -108,7 +119,7 @@ export const appRouter = router({
       suppliers: await listSuppliers(),
     })),
     create: adminProcedure.input(equipmentSchema).mutation(({ input, ctx }) => createEquipment(toEquipmentDbValues(input), ctx.user.id)),
-    batchImport: adminProcedure.input(z.array(equipmentSchema).min(1)).mutation(({ input, ctx }) => importEquipment(input.map(toEquipmentDbValues), ctx.user.id)),
+    batchImport: adminProcedure.input(z.array(equipmentImportSchema).min(1)).mutation(({ input, ctx }) => importEquipment(input.map(toEquipmentDbValues), ctx.user.id)),
     update: adminProcedure.input(z.object({ id: z.number().int().positive(), values: equipmentSchema.partial() })).mutation(({ input, ctx }) => updateEquipment(input.id, toEquipmentDbValues(input.values as z.infer<typeof equipmentSchema>), ctx.user.id)),
     remove: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input, ctx }) => deleteEquipment(input.id, ctx.user.id)),
     changeStatus: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["running", "stopped", "maintenance", "scrapped"]) })).mutation(({ input, ctx }) => changeEquipmentStatus(input.id, input.status, ctx.user.id)),

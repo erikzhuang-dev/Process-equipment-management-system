@@ -24,6 +24,15 @@ describe("Excel 批量导入解析", () => {
     expect(rows[0]).toMatchObject({ supplier: "供应商A", hourlyCapacity: 120, oee: 0.88, lowOeeReason: "换型频繁", energyConsumption: 8.5, quantity: 2, unitPrice: 15, depreciationYears: 8, lossFactor: 0.03, investmentIncluded: true, notes: "按月复核" });
   });
 
+  it("解析 BU、工厂、供应商编码及设备生命周期字段", async () => {
+    const rows = await parseEquipmentWorkbook(workbookFile([{
+      "编号": "EQ-003", "名称": "验证设备", "型号": "M-03", "规格": "S-03", "所属工序": "注塑", "位置": "C-01", "状态": "运行中", "BU编码": "BU1", "工厂编码": "MD", "供应商编码": "SUP-01", "资产类别": "注塑成型设备", "关键等级": "A", "责任人": "王工", "启用日期": "2024-01-15", "保修到期日": "2027-01-14",
+    }]));
+    expect(rows[0]).toMatchObject({ businessUnitCode: "BU1", factoryCode: "MD", supplierCode: "SUP-01", assetCategory: "注塑成型设备", criticality: "A", responsibleOwner: "王工" });
+    expect(rows[0]?.commissionedAt?.toISOString()).toBe("2024-01-15T00:00:00.000Z");
+    expect(rows[0]?.warrantyExpiresAt?.toISOString()).toBe("2027-01-14T00:00:00.000Z");
+  });
+
   it("解析保养与维修记录的指定字段、费用和完成时间", async () => {
     const maintenance = await parseMaintenanceWorkbook(workbookFile([{
       "设备编号": "EQ-001", "执行人": "张工", "完成时间": "2026-08-17T08:00:00.000Z", "保养内容": "润滑检查", "备注": "正常",
