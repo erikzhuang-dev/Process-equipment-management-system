@@ -14,7 +14,7 @@ const equipmentListDynamicTranslations: Record<string, string> = {
 };
 const reverseTranslations = Object.fromEntries(Object.entries(translations).map(([zh, en]) => [en, zh]));
 
-function translateDynamicText(core: string, language: Language) {
+export function translateDynamicText(core: string, language: Language) {
   if (language !== "en") return core;
   return core
     .replace(/^当前待处理故障\s+(\d+)\s+项$/, "Open faults: $1")
