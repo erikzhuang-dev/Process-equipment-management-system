@@ -52,3 +52,7 @@ BU4 稳定筛选显示 3 条（`PEM-VAL-010`、`PEM-VAL-009`、`PEM-VAL-008`）�
 管理员备件页面显示 QA 备件、库存 3、安全库存 1、Receive/Issue 操作入口，以及两条可见流水（Receive 5、Issue 2）。权限与审计页面显示项目所有者 Administrator、不可降级提示、设备批量导入和详情编辑审计记录，并仅提供 BU、工厂、供应商的后台基础数据管理区而无 BU 概览卡片；四个 BU、四个导入验证工厂及四家验证供应商均可见。
 
 保养连续界面验证：管理员在 `PEM-VAL-010` 上创建了 30 天周期的计划并生成工单 #30002；恢复后的生产页面显示 #30002 已 Completed，执行人为“全球”、完成时间为 2026/08/19 11:23，同时自动生成下一周期工单 #60001 Pending（2026/09/18 11:23）。这构成“制定计划 → 完成工单 → 自动生成下一周期工单”的连续真实界面证据。
+
+最新双语发布版本专项复核：管理员切换至英文后，运营仪表盘完整显示 Process Equipment Dashboard、Equipment Total、Online Rate、Fault Rate、Maintenance Completion、Repair Frequency Trend、Equipment Status Distribution、Inventory risk、Recent Maintenance Orders 和 Key Operating Notes。状态、工单与动态指标亦显示为 Running、Pending、Completed、Open faults: 1 及 Completed repairs: 1，未见上述核心区域的中文残留。
+
+英文设备详情初步复核发现：页面框架标题和状态已进入英文，但生命周期、投资、治理和顶部操作标签仍有中文残留。这些区域目前依赖命令式 DOM 文本映射，未能稳定覆盖异步详情渲染；将改为组件读取语言状态后直接输出标签。

@@ -11,7 +11,7 @@ function PaginationFixture() {
 
 function CoreModulesFixture() {
   const { setLanguage } = useLanguage();
-  return <><button onClick={() => setLanguage("en")}>English</button><section><p>关键运营说明</p><p>设备详情</p><p>预防性维护</p><p>故障闭环</p><p>备件出入库流水</p><p>用户权限与操作日志</p><p>资产类别</p></section></>;
+  return <><button onClick={() => setLanguage("en")}>English</button><section><p>关键运营说明</p><p>设备详情</p><p>预防性维护</p><p>故障闭环</p><p>备件出入库流水</p><p>用户权限与操作日志</p><p>资产类别</p><p>设备、生产与生命周期参数</p><p>投资与折旧</p><p>治理信息</p></section></>;
 }
 
 describe("LanguageProvider DOM translations", () => {
@@ -38,6 +38,9 @@ describe("LanguageProvider DOM translations", () => {
       expect(container.textContent).toContain("Parts Inventory Transactions");
       expect(container.textContent).toContain("User Permissions & Audit Log");
       expect(container.textContent).toContain("Asset Category");
+      expect(container.textContent).toContain("Equipment, Production & Lifecycle");
+      expect(container.textContent).toContain("Investment & Depreciation");
+      expect(container.textContent).toContain("Governance Information");
     } finally {
       unmount();
     }
