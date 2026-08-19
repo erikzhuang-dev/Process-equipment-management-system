@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 export type Language = "zh" | "en";
 type LanguageContextValue = { language: Language; setLanguage: (language: Language) => void; toggleLanguage: () => void };
@@ -35,7 +35,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       const nodes: Text[] = []; let node: Node | null;
       while ((node = walker.nextNode())) nodes.push(node as Text);
-      nodes.forEach(textNode => { const raw = textNode.nodeValue ?? ""; const leading = raw.match(/^\s*/)?.[0] ?? ""; const trailing = raw.match(/\s*$/)?.[0] ?? ""; const core = raw.trim(); const dynamic = translateDynamicText(core, language); if (map[core] || dynamic !== core) textNode.nodeValue = `${leading}${map[core] ?? dynamic}${trailing}`; });
+      nodes.forEach(textNode => { const raw = textNode.nodeValue ?? ""; const leading = raw.match(/^\s*/)?.[0] ?? ""; const trailing = raw.match(/\s*$/)?.[0] ?? ""; const core = raw.trim(); const dynamic = translateDynamicText(core, language); const hasMappedValue = Object.prototype.hasOwnProperty.call(map, core); if (hasMappedValue || dynamic !== core) textNode.nodeValue = `${leading}${hasMappedValue ? map[core] : dynamic}${trailing}`; });
       document.querySelectorAll<HTMLInputElement>("input[placeholder]").forEach(input => { if (input.placeholder && map[input.placeholder]) input.placeholder = map[input.placeholder]; });
     };
     applyTranslations();
