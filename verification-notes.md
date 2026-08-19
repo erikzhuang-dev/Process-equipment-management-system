@@ -56,3 +56,5 @@ BU4 稳定筛选显示 3 条（`PEM-VAL-010`、`PEM-VAL-009`、`PEM-VAL-008`）�
 最新双语发布版本专项复核：管理员切换至英文后，运营仪表盘完整显示 Process Equipment Dashboard、Equipment Total、Online Rate、Fault Rate、Maintenance Completion、Repair Frequency Trend、Equipment Status Distribution、Inventory risk、Recent Maintenance Orders 和 Key Operating Notes。状态、工单与动态指标亦显示为 Running、Pending、Completed、Open faults: 1 及 Completed repairs: 1，未见上述核心区域的中文残留。
 
 英文设备详情初步复核发现：页面框架标题和状态已进入英文，但生命周期、投资、治理和顶部操作标签仍有中文残留。这些区域目前依赖命令式 DOM 文本映射，未能稳定覆盖异步详情渲染；将改为组件读取语言状态后直接输出标签。
+
+QA-PEM-001 行内自动保存实测发现：管理员在行内 Notes 填入验证文本并通过 Tab 使字段失焦后，页面草稿仍可见，但只读数据库查询的 notes 仍为空、updatedAt 未变化。这表明备注字段失焦未进入有效保存链路；已停止继续覆盖该字段，转入缺陷修复与回归验证。

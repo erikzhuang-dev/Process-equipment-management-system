@@ -29,4 +29,14 @@ describe("行内设备详情交互", () => {
     expect((screen.getByLabelText("每小时产能（pcs）") as HTMLInputElement).value).toBe("120");
     expect(screen.getByText("已自动保存")).toBeTruthy();
   });
+
+  it("输入备注后立即失焦时仍保存最新草稿", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(<InlineEquipmentDetailEditor item={item} businessUnits={[{ id: 1, code: "BU1", name: "BU1" }]} factories={[]} suppliers={[]} isAdmin onSave={onSave} />);
+    const notes = container.querySelector("textarea") as HTMLTextAreaElement;
+    fireEvent.change(notes, { target: { value: "即时失焦自动保存验证" } });
+    fireEvent.blur(notes);
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ notes: "即时失焦自动保存验证" })));
+    await waitFor(() => expect(container.textContent).toContain("已自动保存"));
+  });
 });
