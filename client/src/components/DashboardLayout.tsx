@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useIsMobile } from "@/hooks/useMobile";
+import { getSidebarPresentation, SIDEBAR_DEFAULT_OPEN } from "@/lib/sidebarPresentation";
 import { Boxes, ClipboardList, Gauge, Languages, PanelLeft, Settings2, ShieldCheck, Wrench } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -23,7 +24,7 @@ const MAX_WIDTH = 360;
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => Number(localStorage.getItem(SIDEBAR_WIDTH_KEY)) || DEFAULT_WIDTH);
   useEffect(() => { localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth)); }, [sidebarWidth]);
-  return <SidebarProvider defaultOpen={false} style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}><DashboardLayoutContent setSidebarWidth={setSidebarWidth}>{children}</DashboardLayoutContent></SidebarProvider>;
+  return <div data-sidebar-default={SIDEBAR_DEFAULT_OPEN ? "expanded" : "collapsed"}><SidebarProvider defaultOpen={SIDEBAR_DEFAULT_OPEN} style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}><DashboardLayoutContent setSidebarWidth={setSidebarWidth}>{children}</DashboardLayoutContent></SidebarProvider></div>;
 }
 
 function DashboardLayoutContent({ children, setSidebarWidth }: { children: React.ReactNode; setSidebarWidth: (width: number) => void }) {
@@ -33,7 +34,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  const isCollapsed = state === "collapsed";
+  const { isCollapsed } = getSidebarPresentation(state);
   const active = menuItems.find(item => item.path === location);
   const labelOf = (item: typeof menuItems[number]) => language === "en" ? item.labelEn : item.label;
   useEffect(() => { if (isCollapsed) setIsResizing(false); }, [isCollapsed]);
