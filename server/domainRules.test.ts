@@ -29,6 +29,13 @@ describe("保养周期与 KPI", () => {
     expect(calculateNextMaintenanceDate(source, 30).toISOString()).toBe("2026-08-31T00:00:00.000Z");
   });
 
+  it("拒绝零、负数和非整数保养周期", () => {
+    const source = new Date("2026-08-01T00:00:00.000Z");
+    expect(() => calculateNextMaintenanceDate(source, 0)).toThrow("正整数");
+    expect(() => calculateNextMaintenanceDate(source, -7)).toThrow("正整数");
+    expect(() => calculateNextMaintenanceDate(source, 1.5)).toThrow("正整数");
+  });
+
   it("以一位小数输出分子分母型指标", () => {
     expect(calculateRate(7, 8)).toBe(87.5);
     expect(calculateRate(0, 0)).toBe(0);
