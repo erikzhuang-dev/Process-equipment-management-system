@@ -425,6 +425,6 @@ function UnauthorizedView() {
 
 export default function Home() {
   const [location] = useLocation(); const isAdmin = true;
-  const content = location === "/equipment" ? <EquipmentView isAdmin={isAdmin} /> : location === "/maintenance" ? <MaintenanceView isAdmin={isAdmin} /> : location === "/repairs" ? <RepairsView /> : location === "/parts" ? <><PartsView isAdmin={isAdmin} /><InventoryHistory /></> : location === "/users" ? (isAdmin ? <UsersView /> : <UnauthorizedView />) : <DashboardView />;
+  const content = location === "/dashboard" ? <DashboardView /> : location === "/maintenance" ? <MaintenanceView isAdmin={isAdmin} /> : location === "/repairs" ? <RepairsView /> : location === "/parts" ? <><PartsView isAdmin={isAdmin} /><InventoryHistory /></> : location === "/users" ? (isAdmin ? <UsersView /> : <UnauthorizedView />) : <EquipmentView isAdmin={isAdmin} />;
   return <div className="min-h-full px-1 py-2 lg:px-3">{content}</div>;
 }
