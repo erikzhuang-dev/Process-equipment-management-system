@@ -1,10 +1,18 @@
 #!/usr/bin/env bash
-# 确保 MariaDB 已启动、应用数据库与账号就绪（幂等，可重复执行）
+# 确保 MariaDB 已启动、应用数据库与账号就绪（幂等，可重复执行；缺包时自动安装）
 set -u
 
 DB_NAME="pems"
 DB_USER="pems"
 DB_PASS="pems_local_2024"
+
+# 0. 若未安装 MariaDB 则自动安装（沙箱/容器重置后自愈）
+if ! command -v mysqld >/dev/null 2>&1; then
+  echo "[ensure-db] mariadb not found, installing via apt..."
+  apt-get update -qq >/dev/null 2>&1 || true
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -qq mariadb-server >/dev/null 2>&1 \
+    || { echo "[ensure-db] WARN: apt install failed"; exit 1; }
+fi
 
 # 1. 启动 MariaDB（如未运行）
 if ! mysqladmin ping --silent 2>/dev/null; then
