@@ -35,7 +35,11 @@ import {
   createBusinessUnit,
   createFactory,
   createSupplier,
+  updateBusinessUnit,
+  updateFactory,
   updateSupplier,
+  deleteBusinessUnit,
+  deleteFactory,
   deleteSupplier,
 } from "./db";
 import { assertAdminRole } from "./authorization";
@@ -157,6 +161,10 @@ export const appRouter = router({
     createSupplier: adminProcedure.input(z.object({ code: z.string().min(1).max(32), name: z.string().min(1).max(160), contactName: z.string().max(120).optional(), phone: z.string().max(64).optional(), email: z.string().email().max(160).optional(), address: z.string().max(300).optional() })).mutation(({ input, ctx }) => createSupplier(input, ctx.user.id)),
     updateSupplier: adminProcedure.input(z.object({ id: z.number().int().positive(), values: z.object({ code: z.string().min(1).max(32).optional(), name: z.string().min(1).max(160).optional(), contactName: z.string().max(120).nullable().optional(), phone: z.string().max(64).nullable().optional(), email: z.string().email().max(160).nullable().optional(), address: z.string().max(300).nullable().optional() }) })).mutation(({ input, ctx }) => updateSupplier(input.id, input.values, ctx.user.id)),
     deleteSupplier: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input, ctx }) => deleteSupplier(input.id, ctx.user.id)),
+    updateBusinessUnit: adminProcedure.input(z.object({ id: z.number().int().positive(), values: z.object({ code: z.string().min(1).max(32).optional(), name: z.string().min(1).max(160).optional(), description: z.string().max(300).nullable().optional() }) })).mutation(({ input, ctx }) => updateBusinessUnit(input.id, input.values, ctx.user.id)),
+    deleteBusinessUnit: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input, ctx }) => deleteBusinessUnit(input.id, ctx.user.id)),
+    updateFactory: adminProcedure.input(z.object({ id: z.number().int().positive(), values: z.object({ code: z.string().min(1).max(32).optional(), name: z.string().min(1).max(160).optional(), location: z.string().max(160).nullable().optional(), businessUnitId: z.number().int().positive().nullable().optional() }) })).mutation(({ input, ctx }) => updateFactory(input.id, input.values, ctx.user.id)),
+    deleteFactory: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input, ctx }) => deleteFactory(input.id, ctx.user.id)),
   }),
 });
 

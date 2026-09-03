@@ -119,6 +119,41 @@ export async function deleteSupplier(id: number, userId: number) {
   });
 }
 
+export async function updateBusinessUnit(id: number, input: Partial<{ code: string; name: string; description: string | null }>, userId: number) {
+  const db = requireDb(await getDb());
+  await db.update(businessUnits).set(input).where(eq(businessUnits.id, id));
+  await writeOperationLog({ userId, module: "主数据", action: "编辑BU", targetType: "business_unit", targetId: String(id), detail: input.name ?? input.code ?? null });
+}
+
+export async function deleteBusinessUnit(id: number, userId: number) {
+  const db = requireDb(await getDb());
+  const unit = (await db.select().from(businessUnits).where(eq(businessUnits.id, id)).limit(1))[0];
+  if (!unit) throw new Error("BU 不存在");
+  await db.transaction(async tx => {
+    await tx.update(factories).set({ businessUnitId: null }).where(eq(factories.businessUnitId, id));
+    await tx.update(equipment).set({ businessUnitId: null }).where(eq(equipment.businessUnitId, id));
+    await tx.delete(businessUnits).where(eq(businessUnits.id, id));
+    await tx.insert(operationLogs).values({ userId, module: "主数据", action: "删除BU", targetType: "business_unit", targetId: String(id), detail: `${unit.code} · ${unit.name}` });
+  });
+}
+
+export async function updateFactory(id: number, input: Partial<{ code: string; name: string; location: string | null; businessUnitId: number | null }>, userId: number) {
+  const db = requireDb(await getDb());
+  await db.update(factories).set(input).where(eq(factories.id, id));
+  await writeOperationLog({ userId, module: "主数据", action: "编辑工厂", targetType: "factory", targetId: String(id), detail: input.name ?? input.code ?? null });
+}
+
+export async function deleteFactory(id: number, userId: number) {
+  const db = requireDb(await getDb());
+  const factory = (await db.select().from(factories).where(eq(factories.id, id)).limit(1))[0];
+  if (!factory) throw new Error("工厂不存在");
+  await db.transaction(async tx => {
+    await tx.update(equipment).set({ factoryId: null }).where(eq(equipment.factoryId, id));
+    await tx.delete(factories).where(eq(factories.id, id));
+    await tx.insert(operationLogs).values({ userId, module: "主数据", action: "删除工厂", targetType: "factory", targetId: String(id), detail: `${factory.code} · ${factory.name}` });
+  });
+}
+
 function requireReturnedId(result: { id: number } | undefined) {
   const id = Number(result?.id);
   if (!Number.isInteger(id) || id <= 0) throw new Error("未能获取新建记录 ID");
