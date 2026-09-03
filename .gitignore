@@ -115,3 +115,5 @@ client/public/__manus__/version.json
 
 # Preview files
 .preview
+.cozeproj/reduction
+.codegraph
