@@ -270,7 +270,7 @@ const businessUnitCards = [
 
 function BusinessUnitOverview({ businessUnits, equipment, selectedCode, onSelect, language }: { businessUnits: any[]; equipment: any[]; selectedCode: string | null; onSelect: (code: string) => void; language: "zh" | "en" }) {
   const label = language === "en" ? { total: "Total equipment", active: "Running", alert: "Maintenance" } : { total: "设备总数", active: "运行中", alert: "维修中" };
-  return <section className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4" aria-label={language === "en" ? "Business unit filters" : "业务单元筛选"}>{businessUnitCards.map(card => {
+  return <section className="mb-5 grid gap-4 sm:grid-cols-2 md:grid-cols-4" aria-label={language === "en" ? "Business unit filters" : "业务单元筛选"}>{businessUnitCards.map(card => {
     const businessUnit = getSelectedBusinessUnit(businessUnits, card.code);
     const rows = filterEquipmentByBusinessUnit(equipment, businessUnit?.id ?? -1);
     const selected = selectedCode === card.code;
