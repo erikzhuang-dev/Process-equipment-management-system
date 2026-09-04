@@ -14,7 +14,7 @@ const menuItems = [
   { icon: Wrench, label: "故障与维修", labelEn: "Faults & Repairs", path: "/repairs" },
   { icon: Boxes, label: "备件 / 耗材", labelEn: "Parts & Consumables", path: "/parts" },
   { icon: ShieldCheck, label: "用户权限与日志", labelEn: "Users & Audit Log", path: "/users" },
-  { icon: Gauge, label: "运营仪表盘", labelEn: "Operations Dashboard", path: "/dashboard" },
+  { icon: Gauge, label: "运营仪表盘", labelEn: "Operations Dashboard", path: "/" },
 ];
 const SIDEBAR_WIDTH_KEY = "equipment-sidebar-width";
 const DEFAULT_WIDTH = 264;
@@ -35,7 +35,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
   const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   const { isCollapsed } = getSidebarPresentation(state);
-  const active = menuItems.find(item => item.path === location || (item.path === "/equipment" && (location === "/" || location.startsWith("/equipment"))));
+  const active = menuItems.find(item => item.path === location);
   const labelOf = (item: typeof menuItems[number]) => language === "en" ? item.labelEn : item.label;
   useEffect(() => { if (isCollapsed) setIsResizing(false); }, [isCollapsed]);
   useEffect(() => {
