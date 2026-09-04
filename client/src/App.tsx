@@ -11,7 +11,7 @@ import { Route, Switch } from "wouter";
 function Workspace() { return <DashboardLayout><Home /></DashboardLayout>; }
 
 function App() {
-  return <ErrorBoundary><LanguageProvider><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster richColors position="top-right" /><Switch><Route path="/" component={Workspace} /><Route path="/equipment/:id"><DashboardLayout><EquipmentDetail /></DashboardLayout></Route><Route path="/equipment" component={Workspace} /><Route path="/maintenance" component={Workspace} /><Route path="/repairs" component={Workspace} /><Route path="/parts" component={Workspace} /><Route path="/users" component={Workspace} /><Route component={Workspace} /></Switch></TooltipProvider></ThemeProvider></LanguageProvider></ErrorBoundary>;
+  return <ErrorBoundary><LanguageProvider><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster richColors position="top-right" /><Switch><Route path="/" component={Workspace} /><Route path="/dashboard" component={Workspace} /><Route path="/equipment/:id"><DashboardLayout><EquipmentDetail /></DashboardLayout></Route><Route path="/equipment" component={Workspace} /><Route path="/maintenance" component={Workspace} /><Route path="/repairs" component={Workspace} /><Route path="/parts" component={Workspace} /><Route path="/users" component={Workspace} /><Route component={Workspace} /></Switch></TooltipProvider></ThemeProvider></LanguageProvider></ErrorBoundary>;
 }
 
 export default App;

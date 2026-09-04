@@ -14,7 +14,7 @@ const menuItems = [
   { icon: Wrench, label: "故障与维修", labelEn: "Faults & Repairs", path: "/repairs" },
   { icon: Boxes, label: "备件 / 耗材", labelEn: "Parts & Consumables", path: "/parts" },
   { icon: ShieldCheck, label: "用户权限与日志", labelEn: "Users & Audit Log", path: "/users" },
-  { icon: Gauge, label: "运营仪表盘", labelEn: "Operations Dashboard", path: "/" },
+  { icon: Gauge, label: "运营仪表盘", labelEn: "Operations Dashboard", path: "/dashboard" },
 ];
 const SIDEBAR_WIDTH_KEY = "equipment-sidebar-width";
 const DEFAULT_WIDTH = 264;

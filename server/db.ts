@@ -295,6 +295,26 @@ export async function importEquipment(rows: EquipmentImportRow[], userId: number
   const factoryByCode = new Map(factoryRows.map(row => [row.code, row]));
   const supplierByCode = new Map(supplierRows.map(row => [row.code, row]));
   await db.transaction(async tx => {
+    // 自动补齐 Excel 中出现但系统尚不存在的主数据（BU / 工厂 / 供应商）
+    const missingBusinessUnitCodes = Array.from(new Set(rows.map(row => row.businessUnitCode).filter((code): code is string => typeof code === "string" && !businessUnitByCode.has(code))));
+    if (missingBusinessUnitCodes.length > 0) {
+      await tx.insert(businessUnits).values(missingBusinessUnitCodes.map(code => ({ code, name: code })));
+      for (const row of await tx.select().from(businessUnits)) businessUnitByCode.set(row.code, row);
+    }
+    const missingFactoryCodes = Array.from(new Set(rows.map(row => row.factoryCode).filter((code): code is string => typeof code === "string" && !factoryByCode.has(code))));
+    if (missingFactoryCodes.length > 0) {
+      await tx.insert(factories).values(missingFactoryCodes.map(code => ({ code, name: code })));
+      for (const row of await tx.select().from(factories)) factoryByCode.set(row.code, row);
+    }
+    const missingSupplierCodes = Array.from(new Set(rows.map(row => row.supplierCode).filter((code): code is string => typeof code === "string" && !supplierByCode.has(code))));
+    if (missingSupplierCodes.length > 0) {
+      const supplierNameByCode = new Map<string, string>();
+      for (const row of rows) {
+        if (row.supplierCode && row.supplier && !supplierNameByCode.has(row.supplierCode)) supplierNameByCode.set(row.supplierCode, row.supplier);
+      }
+      await tx.insert(suppliers).values(missingSupplierCodes.map(code => ({ code, name: supplierNameByCode.get(code) ?? code })));
+      for (const row of await tx.select().from(suppliers)) supplierByCode.set(row.code, row);
+    }
     for (const row of rows) {
       const { businessUnitCode, factoryCode, supplierCode, ...values } = row;
       const businessUnit = businessUnitCode ? businessUnitByCode.get(businessUnitCode) : undefined;

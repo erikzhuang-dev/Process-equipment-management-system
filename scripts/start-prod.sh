@@ -10,6 +10,7 @@ if [ "${SKIP_DB:-}" = "1" ]; then
 elif command -v mysqladmin >/dev/null 2>&1; then
   bash scripts/ensure-db.sh
   pnpm run db:push || echo "[start-prod] WARN: db:push failed" >&2
+  bash scripts/ensure-seed.sh
 elif [ -n "${DATABASE_URL:-}" ]; then
   echo "[start-prod] DATABASE_URL provided, running migrations against it"
   pnpm run db:push || echo "[start-prod] WARN: db:push failed" >&2

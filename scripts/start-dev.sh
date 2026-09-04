@@ -8,6 +8,9 @@ bash scripts/ensure-db.sh
 # 应用数据库迁移（幂等）
 pnpm run db:push
 
+# 迁移后导入种子数据（仅当业务表为空）
+bash scripts/ensure-seed.sh
+
 export NODE_ENV=development
 export PORT="${DEPLOY_RUN_PORT:-5000}"
 exec pnpm exec tsx watch server/_core/index.ts
