@@ -13,7 +13,7 @@ const item = {
 describe("行内设备详情交互", () => {
   it("点击设备行展开 React 详情行", () => {
     const onToggle = vi.fn();
-    render(<table><tbody><EquipmentTableRow item={item} expanded={false} isAdmin={false} businessUnits={[]} factories={[]} suppliers={[]} onToggle={onToggle} onDetail={vi.fn()} onHistory={vi.fn()} onStatus={vi.fn()} onInlineSave={vi.fn()} onUpdate={vi.fn()} onDelete={vi.fn()} /></tbody></table>);
+    render(<table><tbody><EquipmentTableRow item={item} expanded={false} isAdmin={false} businessUnits={[]} factories={[]} suppliers={[]} onToggle={onToggle} onInlineSave={vi.fn()} onDelete={vi.fn()} /></tbody></table>);
     fireEvent.click(screen.getByText("QA-PEM-001"));
     expect(onToggle).toHaveBeenCalledOnce();
   });
