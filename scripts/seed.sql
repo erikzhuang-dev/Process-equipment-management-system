@@ -1,89 +1,20 @@
 SET NAMES utf8mb4;
-CREATE TABLE `business_units` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `code` varchar(32) NOT NULL,
-  `name` varchar(120) NOT NULL,
-  `description` varchar(300) DEFAULT NULL,
-  `isActive` tinyint(1) NOT NULL DEFAULT 1,
-  `createdAt` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updatedAt` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `business_units_code_unique` (`code`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT IGNORE INTO `business_units` (`id`, `code`, `name`, `description`, `isActive`, `createdAt`, `updatedAt`) VALUES (1,'BU4','BU4',NULL,1,'2026-09-04 00:43:56','2026-09-04 00:43:56'),
 (2,'BU2','BU2',NULL,1,'2026-09-04 00:43:56','2026-09-04 00:43:56'),
 (3,'BU3','BU3',NULL,1,'2026-09-04 00:43:56','2026-09-04 00:43:56'),
 (4,'BU1','BU1',NULL,1,'2026-09-04 00:43:56','2026-09-04 00:43:56');
-CREATE TABLE `factories` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `code` varchar(32) NOT NULL,
-  `name` varchar(120) NOT NULL,
-  `location` varchar(160) DEFAULT NULL,
-  `businessUnitId` int(11) DEFAULT NULL,
-  `isActive` tinyint(1) NOT NULL DEFAULT 1,
-  `createdAt` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updatedAt` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `factories_code_unique` (`code`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT IGNORE INTO `factories` (`id`, `code`, `name`, `location`, `businessUnitId`, `isActive`, `createdAt`, `updatedAt`) VALUES (1,'VAI-VALID','VAI-VALID',NULL,NULL,1,'2026-09-04 00:43:56','2026-09-04 00:43:56'),
 (2,'LD','LD',NULL,NULL,1,'2026-09-04 00:43:56','2026-09-04 00:43:56'),
 (3,'DIAG-VALID','DIAG-VALID',NULL,NULL,1,'2026-09-04 00:43:56','2026-09-04 00:43:56'),
 (4,'Maider','Maider',NULL,NULL,1,'2026-09-04 00:43:56','2026-09-04 00:43:56');
-CREATE TABLE `suppliers` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `code` varchar(32) NOT NULL,
-  `name` varchar(160) NOT NULL,
-  `contactName` varchar(120) DEFAULT NULL,
-  `phone` varchar(64) DEFAULT NULL,
-  `email` varchar(160) DEFAULT NULL,
-  `address` varchar(300) DEFAULT NULL,
-  `isActive` tinyint(1) NOT NULL DEFAULT 1,
-  `createdAt` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updatedAt` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `suppliers_code_unique` (`code`),
-  KEY `supplier_name_index` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT IGNORE INTO `suppliers` (`id`, `code`, `name`, `contactName`, `phone`, `email`, `address`, `isActive`, `createdAt`, `updatedAt`) VALUES (1,'SUP-VALID-04','系统验证供应商·质量检测',NULL,NULL,NULL,NULL,1,'2026-09-04 00:43:56','2026-09-04 00:43:56'),
 (2,'SUP-VALID-01','系统验证供应商·注塑与输送',NULL,NULL,NULL,NULL,1,'2026-09-04 00:43:56','2026-09-04 00:43:56'),
 (3,'SUP-VALID-02','系统验证供应商·诊断装备',NULL,NULL,NULL,NULL,1,'2026-09-04 00:43:56','2026-09-04 00:43:56'),
 (4,'SUP-VALID-03','系统验证供应商·给药装配',NULL,NULL,NULL,NULL,1,'2026-09-04 00:43:56','2026-09-04 00:43:56');
-CREATE TABLE `equipment` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `code` varchar(80) NOT NULL,
-  `name` varchar(160) NOT NULL,
-  `model` varchar(120) NOT NULL,
-  `specification` varchar(200) NOT NULL,
-  `process` varchar(120) NOT NULL,
-  `location` varchar(160) NOT NULL,
-  `status` enum('running','stopped','maintenance','scrapped') NOT NULL DEFAULT 'running',
-  `createdAt` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updatedAt` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `supplier` varchar(160) DEFAULT NULL,
-  `hourlyCapacity` int(11) DEFAULT NULL,
-  `oee` decimal(6,4) DEFAULT NULL,
-  `lowOeeReason` text DEFAULT NULL,
-  `energyConsumption` decimal(12,3) DEFAULT NULL,
-  `quantity` int(11) DEFAULT NULL,
-  `unitPrice` decimal(14,2) DEFAULT NULL,
-  `depreciationYears` int(11) DEFAULT NULL,
-  `lossFactor` decimal(8,4) DEFAULT NULL,
-  `investmentIncluded` tinyint(1) DEFAULT NULL,
-  `notes` text DEFAULT NULL,
-  `businessUnitId` int(11) DEFAULT NULL,
-  `factoryId` int(11) DEFAULT NULL,
-  `supplierId` int(11) DEFAULT NULL,
-  `assetCategory` varchar(80) DEFAULT NULL,
-  `criticality` varchar(8) DEFAULT NULL,
-  `responsibleOwner` varchar(120) DEFAULT NULL,
-  `commissionedAt` timestamp NULL DEFAULT NULL,
-  `warrantyExpiresAt` timestamp NULL DEFAULT NULL,
-  `productId` int(11) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `equipment_code_unique` (`code`),
-  KEY `equipment_status_index` (`status`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT IGNORE INTO `equipment` (`id`, `code`, `name`, `model`, `specification`, `process`, `location`, `status`, `createdAt`, `updatedAt`, `supplier`, `hourlyCapacity`, `oee`, `lowOeeReason`, `energyConsumption`, `quantity`, `unitPrice`, `depreciationYears`, `lossFactor`, `investmentIncluded`, `notes`, `businessUnitId`, `factoryId`, `supplierId`, `assetCategory`, `criticality`, `responsibleOwner`, `commissionedAt`, `warrantyExpiresAt`, `productId`) VALUES (1,'PEM-VAL-010','系统验证·泄漏测试仪','LKG-240','四通道','密封测试','BU4-Q01','running','2026-09-04 00:43:56','2026-09-04 00:43:56','系统验证供应商·质量检测',240,0.9600,NULL,2.700,3,21.50,5,0.0100,0,'系统管理员 Excel 导入验证数据；上线生产前请替换为现场实际台账。',1,1,1,'质量检测设备','B','周工（详情编辑已核验）','2024-06-21 08:00:00','2027-06-20 08:00:00',NULL),
 (2,'PEM-VAL-009','系统验证·导管成型机','CAT-150','精密挤出','导管成型','BU4-D02','running','2026-09-04 00:43:56','2026-09-04 00:43:56','系统验证供应商·注塑与输送',150,0.9000,NULL,11.800,1,58.40,8,0.0300,1,'系统管理员 Excel 导入验证数据；上线生产前请替换为现场实际台账。',1,1,2,'挤出成型设备','A','孙工','2024-01-29 08:00:00','2027-01-28 08:00:00',NULL),
 (3,'PEM-VAL-004','系统验证·诊断试剂灌装机','FIL-180','六头灌装','试剂灌装','BU2-B01','running','2026-09-04 00:43:56','2026-09-04 00:43:56','系统验证供应商·诊断装备',180,0.9000,NULL,9.600,1,68.00,8,0.0200,1,'系统管理员 Excel 导入验证数据；上线生产前请替换为现场实际台账。',2,2,3,'灌装设备','A','陈工','2023-08-31 08:00:00','2026-08-30 08:00:00',NULL),
@@ -95,31 +26,9 @@ INSERT IGNORE INTO `equipment` (`id`, `code`, `name`, `model`, `specification`, 
 (9,'PEM-VAL-002','系统验证·给药装配线','ASM-120','120工位','自动装配','BU1-A02','running','2026-09-04 00:43:56','2026-09-04 00:43:56','系统验证供应商·给药装配',360,0.8800,'换型与物料切换频繁',12.800,1,74.20,8,0.0300,1,'系统管理员 Excel 导入验证数据；上线生产前请替换为现场实际台账。',4,4,4,'自动装配设备','A','王工','2024-02-19 08:00:00','2027-02-18 08:00:00',NULL),
 (10,'PEM-VAL-003','系统验证·视觉检测机','VIS-300','12相机','视觉检测','BU1-Q01','running','2026-09-04 00:43:56','2026-09-04 00:43:56','系统验证供应商·质量检测',600,0.9400,NULL,4.500,2,35.00,5,0.0100,1,'系统管理员 Excel 导入验证数据；上线生产前请替换为现场实际台账。',4,4,1,'质量检测设备','B','李工','2024-03-11 08:00:00','2026-03-10 08:00:00',NULL),
 (11,'QA-PEM-001','工艺设备核验机','QA-MODEL-01','1200×800×1600 mm','装配工序','A区-装配线-02','running','2026-09-04 00:43:56','2026-09-04 00:43:56',NULL,12000,0.9000,NULL,45.000,1,35.00,10,0.0500,1,NULL,4,2,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
-CREATE TABLE `parts` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(160) NOT NULL,
-  `specification` varchar(200) NOT NULL,
-  `stockQuantity` int(11) NOT NULL DEFAULT 0,
-  `safetyStock` int(11) NOT NULL DEFAULT 0,
-  `createdAt` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updatedAt` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  KEY `parts_name_index` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT IGNORE INTO `parts` (`id`, `name`, `specification`, `stockQuantity`, `safetyStock`, `createdAt`, `updatedAt`) VALUES (1,'HEPA 高效过滤器','1170×570×220mm H13',12,5,'2026-09-04 00:45:04','2026-09-04 00:45:04'),
 (2,'伺服电机 750W','MHMF082L1U2M',6,4,'2026-09-04 00:45:04','2026-09-04 00:45:04'),
 (3,'气动比例阀','ITV2030-312BL5',3,6,'2026-09-04 00:45:04','2026-09-04 00:45:04');
-CREATE TABLE `products` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `code` varchar(32) NOT NULL,
-  `name` varchar(160) NOT NULL,
-  `imageUrl` varchar(500) DEFAULT NULL,
-  `description` varchar(300) DEFAULT NULL,
-  `isActive` tinyint(1) NOT NULL DEFAULT 1,
-  `createdAt` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updatedAt` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `products_code_unique` (`code`),
-  KEY `products_name_index` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 INSERT IGNORE INTO `products` (`id`, `code`, `name`, `imageUrl`, `description`, `isActive`, `createdAt`, `updatedAt`) VALUES (1,'FRH','Fast Release Holder','/uploads/frh-demo.jpg',NULL,1,'2026-09-08 06:06:44','2026-09-08 06:06:44');
