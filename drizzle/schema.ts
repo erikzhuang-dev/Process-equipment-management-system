@@ -57,6 +57,21 @@ export const suppliers = mysqlTable("suppliers", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("supplier_name_index").on(table.name)]);
 
+export const products = mysqlTable(
+  "products",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    code: varchar("code", { length: 32 }).notNull().unique(),
+    name: varchar("name", { length: 160 }).notNull(),
+    imageUrl: varchar("imageUrl", { length: 500 }),
+    description: varchar("description", { length: 300 }),
+    isActive: boolean("isActive").default(true).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [index("products_name_index").on(table.name)],
+);
+
 export const equipment = mysqlTable(
   "equipment",
   {
@@ -67,6 +82,7 @@ export const equipment = mysqlTable(
     specification: varchar("specification", { length: 200 }).notNull(),
     process: varchar("process", { length: 120 }).notNull(),
     location: varchar("location", { length: 160 }).notNull(),
+    productId: int("productId"),
     status: mysqlEnum("status", ["running", "stopped", "maintenance", "scrapped"])
       .default("running")
       .notNull(),
@@ -228,3 +244,4 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Equipment = typeof equipment.$inferSelect;
 export type Part = typeof parts.$inferSelect;
+export type Product = typeof products.$inferSelect;

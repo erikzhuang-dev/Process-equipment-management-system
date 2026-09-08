@@ -50,6 +50,13 @@
       "when": 1787051584893,
       "tag": "0006_gorgeous_omega_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1788838475113,
+      "tag": "0007_famous_franklin_richards",
+      "breakpoints": true
     }
   ]
 }

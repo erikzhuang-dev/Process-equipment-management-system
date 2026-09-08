@@ -12,6 +12,7 @@ import {
   maintenanceWorkOrders,
   operationLogs,
   parts,
+  products,
   repairWorkOrders,
   suppliers,
   users,
@@ -76,6 +77,55 @@ export async function listFactories() {
 export async function listSuppliers() {
   const db = requireDb(await getDb());
   return db.select().from(suppliers).orderBy(suppliers.name);
+}
+
+export async function listProducts() {
+  const db = requireDb(await getDb());
+  return db.select().from(products).orderBy(products.code);
+}
+
+export async function createProduct(input: { code: string; name: string; imageUrl?: string | null }, userId: number) {
+  const db = requireDb(await getDb());
+  const result = await db.insert(products).values(input).$returningId();
+  const id = requireReturnedId(result[0]);
+  await writeOperationLog({ userId, module: "主数据", action: "新增产品", targetType: "product", targetId: String(id), detail: `${input.code} · ${input.name}` });
+  return id;
+}
+
+export async function updateProduct(id: number, input: Partial<{ code: string; name: string; imageUrl: string | null }>, userId: number) {
+  const db = requireDb(await getDb());
+  await db.update(products).set(input).where(eq(products.id, id));
+  await writeOperationLog({ userId, module: "主数据", action: "编辑产品", targetType: "product", targetId: String(id), detail: input.name ?? input.code ?? null });
+}
+
+export async function deleteProduct(id: number, userId: number) {
+  const db = requireDb(await getDb());
+  const product = (await db.select().from(products).where(eq(products.id, id)).limit(1))[0];
+  if (!product) throw new Error("产品不存在");
+  await db.transaction(async tx => {
+    await tx.update(equipment).set({ productId: null }).where(eq(equipment.productId, id));
+    await tx.delete(products).where(eq(products.id, id));
+    await tx.insert(operationLogs).values({ userId, module: "主数据", action: "删除产品", targetType: "product", targetId: String(id), detail: `${product.code} · ${product.name}` });
+  });
+}
+
+/** 产品设备族：同一产品下的全部设备（含 BU 信息用于抽屉过滤） */
+export async function listEquipmentFamilies(productId?: number | null) {
+  const db = requireDb(await getDb());
+  return db
+    .select({
+      id: equipment.id,
+      code: equipment.code,
+      name: equipment.name,
+      status: equipment.status,
+      productId: equipment.productId,
+      businessUnitId: equipment.businessUnitId,
+      businessUnitCode: businessUnits.code,
+    })
+    .from(equipment)
+    .leftJoin(businessUnits, eq(equipment.businessUnitId, businessUnits.id))
+    .where(productId ? eq(equipment.productId, productId) : undefined)
+    .orderBy(equipment.code);
 }
 
 export async function createBusinessUnit(input: { code: string; name: string; description?: string }, userId: number) {

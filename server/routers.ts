@@ -41,6 +41,11 @@ import {
   deleteBusinessUnit,
   deleteFactory,
   deleteSupplier,
+  listProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  listEquipmentFamilies,
 } from "./db";
 import { assertAdminRole } from "./authorization";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -59,6 +64,7 @@ export const equipmentSchema = z.object({
   supplierId: z.coerce.number().int().positive().nullable().optional(),
   businessUnitId: z.coerce.number().int().positive().nullable().optional(),
   factoryId: z.coerce.number().int().positive().nullable().optional(),
+  productId: z.coerce.number().int().positive().nullable().optional(),
   assetCategory: z.string().max(80).nullable().optional(),
   criticality: z.enum(["A", "B", "C"]).nullable().optional(),
   responsibleOwner: z.string().max(120).nullable().optional(),
@@ -113,6 +119,12 @@ export const appRouter = router({
   dashboard: router({
     metrics: protectedProcedure.query(() => getDashboardMetrics()),
   }),
+  products: router({
+    list: protectedProcedure.query(() => listProducts()),
+    create: adminProcedure.input(z.object({ code: z.string().trim().min(1).max(40), name: z.string().trim().min(1).max(160), imageUrl: z.string().trim().max(500).nullable().optional() })).mutation(({ input, ctx }) => createProduct({ ...input, imageUrl: input.imageUrl ?? null }, ctx.user.id)),
+    update: adminProcedure.input(z.object({ id: z.number().int().positive(), values: z.object({ code: z.string().trim().min(1).max(40).optional(), name: z.string().trim().min(1).max(160).optional(), imageUrl: z.string().trim().max(500).nullable().optional() }) })).mutation(({ input, ctx }) => updateProduct(input.id, input.values, ctx.user.id)),
+    delete: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input, ctx }) => deleteProduct(input.id, ctx.user.id)),
+  }),
   equipment: router({
     list: protectedProcedure.input(z.object({ search: z.string().optional(), businessUnitId: z.number().int().positive().optional(), page: z.number().int().min(1).default(1), pageSize: z.number().int().min(1).max(100).default(10) })).query(({ input }) => listEquipment(input)),
     export: protectedProcedure.query(() => listAllEquipment()),
@@ -121,6 +133,7 @@ export const appRouter = router({
       businessUnits: await listBusinessUnits(),
       factories: await listFactories(),
       suppliers: await listSuppliers(),
+      products: await listProducts(),
     })),
     create: adminProcedure.input(equipmentSchema).mutation(({ input, ctx }) => createEquipment(toEquipmentDbValues(input), ctx.user.id)),
     batchImport: adminProcedure.input(z.array(equipmentImportSchema).min(1)).mutation(({ input, ctx }) => importEquipment(input.map(toEquipmentDbValues), ctx.user.id)),
@@ -165,6 +178,11 @@ export const appRouter = router({
     deleteBusinessUnit: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input, ctx }) => deleteBusinessUnit(input.id, ctx.user.id)),
     updateFactory: adminProcedure.input(z.object({ id: z.number().int().positive(), values: z.object({ code: z.string().min(1).max(32).optional(), name: z.string().min(1).max(160).optional(), location: z.string().max(160).nullable().optional(), businessUnitId: z.number().int().positive().nullable().optional() }) })).mutation(({ input, ctx }) => updateFactory(input.id, input.values, ctx.user.id)),
     deleteFactory: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input, ctx }) => deleteFactory(input.id, ctx.user.id)),
+    products: adminProcedure.query(() => listProducts()),
+    equipmentFamilies: protectedProcedure.input(z.object({ productId: z.number().int().positive() })).query(({ input }) => listEquipmentFamilies(input.productId)),
+    createProduct: adminProcedure.input(z.object({ code: z.string().min(1).max(32), name: z.string().min(1).max(160), imageUrl: z.string().max(500).nullable().optional() })).mutation(({ input, ctx }) => createProduct(input, ctx.user.id)),
+    updateProduct: adminProcedure.input(z.object({ id: z.number().int().positive(), values: z.object({ code: z.string().min(1).max(32).optional(), name: z.string().min(1).max(160).optional(), imageUrl: z.string().max(500).nullable().optional() }) })).mutation(({ input, ctx }) => updateProduct(input.id, input.values, ctx.user.id)),
+    deleteProduct: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input, ctx }) => deleteProduct(input.id, ctx.user.id)),
   }),
 });
 

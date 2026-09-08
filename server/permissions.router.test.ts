@@ -7,6 +7,7 @@ vi.mock("./db", async importOriginal => {
     listBusinessUnits: vi.fn(async () => [{ id: 1, code: "BU1", name: "设备运营" }]),
     listFactories: vi.fn(async () => [{ id: 7, code: "F01", name: "一号工厂", businessUnitId: 1 }]),
     listSuppliers: vi.fn(async () => [{ id: 12, code: "SUP-001", name: "供应商甲" }]),
+    listProducts: vi.fn(async () => []),
     createSupplier: vi.fn(async () => 12),
     updateSupplier: vi.fn(async () => undefined),
     deleteSupplier: vi.fn(async () => undefined),
@@ -56,6 +57,7 @@ describe("管理员权限路由", () => {
       businessUnits: [{ id: 1, code: "BU1", name: "设备运营" }],
       factories: [{ id: 7, code: "F01", name: "一号工厂", businessUnitId: 1 }],
       suppliers: [{ id: 12, code: "SUP-001", name: "供应商甲" }],
+      products: [],
     });
   });
 
