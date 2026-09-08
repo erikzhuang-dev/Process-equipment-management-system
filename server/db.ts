@@ -594,26 +594,97 @@ export async function updateUserRole(id: number, role: "admin" | "user", adminId
   });
 }
 
+export type DashboardMetricsInput = {
+  equipmentRows: (typeof equipment.$inferSelect)[];
+  faultRows: (typeof faults.$inferSelect)[];
+  maintenanceRows: (typeof maintenanceWorkOrders.$inferSelect)[];
+  repairRows: (typeof repairWorkOrders.$inferSelect)[];
+  partRows: (typeof parts.$inferSelect)[];
+  businessUnitRows: (typeof businessUnits.$inferSelect)[];
+  now?: Date;
+};
+
+const OEE_THRESHOLD = 0.9;
+const WARRANTY_DUE_SOON_DAYS = 90;
+const DASHBOARD_STATUS_LIST: { status: string; label: string }[] = [
+  { status: "running", label: "运行中" },
+  { status: "stopped", label: "停机" },
+  { status: "maintenance", label: "保养中" },
+  { status: "scrapped", label: "报废" },
+];
+
+export function computeDashboardMetrics(input: DashboardMetricsInput) {
+  const now = input.now ?? new Date();
+  const rows = input.equipmentRows;
+  const total = rows.length;
+  const running = rows.filter(item => item.status === "running").length;
+  const scrapped = rows.filter(item => item.status === "scrapped").length;
+  const openFaults = input.faultRows.filter(item => item.status !== "closed").length;
+  const completedMaintenance = input.maintenanceRows.filter(item => item.status === "completed").length;
+  const assetValueOf = (row: typeof equipment.$inferSelect) => row.quantity != null && row.unitPrice != null && row.unitPrice !== "" ? Number(row.quantity) * Number(row.unitPrice) : null;
+  const totalAssetValue = Math.round(rows.reduce((sum, row) => sum + (assetValueOf(row) ?? 0), 0) * 100) / 100;
+  const oeeKnown = rows.map(row => (row.oee == null || row.oee === "" ? null : Number(row.oee))).filter((value): value is number => value != null);
+  const oeeCompliant = oeeKnown.filter(value => value >= OEE_THRESHOLD).length;
+  const oeeComplianceRate = oeeKnown.length ? Math.round((oeeCompliant / oeeKnown.length) * 1000) / 10 : 0;
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const dueLimit = todayStart + WARRANTY_DUE_SOON_DAYS * 86400000;
+  const warrantyOverview = { expired: 0, dueSoon: 0, inWarranty: 0, notEntered: 0, dueSoonWindowDays: WARRANTY_DUE_SOON_DAYS };
+  rows.forEach(row => {
+    const expiry = row.warrantyExpiresAt ? new Date(row.warrantyExpiresAt).getTime() : null;
+    if (expiry == null) warrantyOverview.notEntered += 1;
+    else if (expiry < todayStart) warrantyOverview.expired += 1;
+    else if (expiry <= dueLimit) warrantyOverview.dueSoon += 1;
+    else warrantyOverview.inWarranty += 1;
+  });
+  const ageMap = new Map<string, number>();
+  rows.forEach(row => {
+    const year = row.commissionedAt ? String(new Date(row.commissionedAt).getFullYear()) : null;
+    const key = year && year !== "1970" ? year : "未录入";
+    ageMap.set(key, (ageMap.get(key) ?? 0) + 1);
+  });
+  const ageDistribution = Array.from(ageMap.entries()).sort((a, b) => (a[0] === "未录入" ? 1 : b[0] === "未录入" ? -1 : Number(a[0]) - Number(b[0]))).map(([label, count]) => ({ label, count }));
+  const critCounts = new Map<string, number>();
+  rows.forEach(row => {
+    const key = row.criticality && row.criticality !== "" ? row.criticality : "未录入";
+    critCounts.set(key, (critCounts.get(key) ?? 0) + 1);
+  });
+  const criticalityBreakdown = ["A", "B", "C", "未录入"].map(label => ({ label, count: critCounts.get(label) ?? 0 }));
+  const buDistribution = input.businessUnitRows.map(bu => {
+    const members = rows.filter(row => row.businessUnitId === bu.id);
+    return { buId: bu.id, buCode: bu.code, buName: bu.name, count: members.length, assetValue: Math.round(members.reduce((sum, row) => sum + (assetValueOf(row) ?? 0), 0) * 100) / 100 };
+  });
+  const topValueEquipment = rows.map(row => ({ id: row.id, code: row.code, name: row.name, assetValue: assetValueOf(row) })).filter((item): item is { id: number; code: string; name: string; assetValue: number } => item.assetValue != null).sort((a, b) => b.assetValue - a.assetValue).slice(0, 5);
+  const onlineBase = total - scrapped;
+  return {
+    totalEquipment: total,
+    onlineRate: onlineBase ? Math.round((running / onlineBase) * 1000) / 10 : 0,
+    faultRate: total ? Math.round((openFaults / total) * 1000) / 10 : 0,
+    maintenanceCompletionRate: input.maintenanceRows.length ? Math.round((completedMaintenance / input.maintenanceRows.length) * 1000) / 10 : 0,
+    openFaults,
+    completedRepairs: input.repairRows.filter(item => item.status === "completed").length,
+    lowStockParts: input.partRows.filter(item => item.stockQuantity <= item.safetyStock).length,
+    totalAssetValue,
+    oeeComplianceRate,
+    warrantyDueSoonCount: warrantyOverview.dueSoon,
+    statusBreakdown: DASHBOARD_STATUS_LIST.map(({ status, label }) => ({ status, label, count: rows.filter(row => row.status === status).length })),
+    buDistribution,
+    warrantyOverview,
+    oeeOverview: { threshold: OEE_THRESHOLD, compliant: oeeCompliant, nonCompliant: oeeKnown.length - oeeCompliant, notEntered: total - oeeKnown.length, rate: oeeComplianceRate },
+    ageDistribution,
+    criticalityBreakdown,
+    topValueEquipment,
+  };
+}
+
 export async function getDashboardMetrics() {
   const db = requireDb(await getDb());
-  const [equipmentRows, faultRows, maintenanceRows, repairRows, partRows] = await Promise.all([
+  const [equipmentRows, faultRows, maintenanceRows, repairRows, partRows, businessUnitRows] = await Promise.all([
     db.select().from(equipment),
     db.select().from(faults),
     db.select().from(maintenanceWorkOrders),
     db.select().from(repairWorkOrders),
     db.select().from(parts),
+    db.select().from(businessUnits),
   ]);
-  const total = equipmentRows.length;
-  const running = equipmentRows.filter(item => item.status === "running").length;
-  const openFaults = faultRows.filter(item => item.status !== "closed").length;
-  const completedMaintenance = maintenanceRows.filter(item => item.status === "completed").length;
-  return {
-    totalEquipment: total,
-    onlineRate: total ? Math.round((running / total) * 1000) / 10 : 0,
-    faultRate: total ? Math.round((openFaults / total) * 1000) / 10 : 0,
-    maintenanceCompletionRate: maintenanceRows.length ? Math.round((completedMaintenance / maintenanceRows.length) * 1000) / 10 : 0,
-    openFaults,
-    completedRepairs: repairRows.filter(item => item.status === "completed").length,
-    lowStockParts: partRows.filter(item => item.stockQuantity <= item.safetyStock).length,
-  };
+  return computeDashboardMetrics({ equipmentRows, faultRows, maintenanceRows, repairRows, partRows, businessUnitRows });
 }

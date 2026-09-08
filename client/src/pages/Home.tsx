@@ -22,10 +22,12 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Boxes,
+  Building2,
   CalendarCheck2,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  Coins,
   Factory,
   FileSpreadsheet,
   Gauge,
@@ -40,6 +42,7 @@ import {
   TrendingUp,
   Wrench,
   ImagePlus,
+  Target,
 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -216,20 +219,63 @@ function publishImportResult(message: string) {
 
 function DashboardView() {
   const metrics = trpc.dashboard.metrics.useQuery();
-  const equipment = trpc.equipment.export.useQuery();
-  const repairs = trpc.repairs.list.useQuery();
-  const maintenance = trpc.maintenance.list.useQuery();
-  const trend = useMemo(() => {
-    const entries = new Map<string, number>();
-    (repairs.data ?? []).filter(item => item.completedAt).forEach(item => {
-      const key = new Date(item.completedAt!).toLocaleDateString("zh-CN", { month: "numeric", year: "2-digit" });
-      entries.set(key, (entries.get(key) ?? 0) + 1);
-    });
-    return Array.from(entries.entries()).map(([month, repairs]) => ({ month, repairs }));
-  }, [repairs.data]);
-  const statusCounts = useMemo(() => Object.keys(statusMeta).map(status => ({ status, count: (equipment.data ?? []).filter(item => item.status === status).length })), [equipment.data]);
   const data = metrics.data;
-  return <><PageHeader eyebrow="设备运营中心" title="生产工艺设备仪表盘" description="围绕设备运行、保养、维修和库存风险进行统一监控。" /><section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><DataCard icon={Factory} label="设备总数" value={data?.totalEquipment ?? 0} hint="已纳入设备台账" /><DataCard icon={Gauge} label="在线率" value={`${data?.onlineRate ?? 0}%`} hint="运行中设备占比" tone="green" /><DataCard icon={AlertTriangle} label="故障率" value={`${data?.faultRate ?? 0}%`} hint={`当前待处理故障 ${data?.openFaults ?? 0} 项`} tone={data?.openFaults ? "red" : "slate"} /><DataCard icon={CalendarCheck2} label="保养完成率" value={`${data?.maintenanceCompletionRate ?? 0}%`} hint={`已完成维修 ${data?.completedRepairs ?? 0} 项`} tone="amber" /></section><section className="mt-5 grid gap-5 xl:grid-cols-[1.5fr_1fr]"><article className="industrial-card p-5"><div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold text-[#26392a]">维修频次趋势</h2><p className="mt-1 text-xs text-[#829081]">以已完成维修工单为统计口径</p></div><TrendingUp className="h-5 w-5 text-[#4a7c59]" /></div>{trend.length ? <div className="h-64"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trend} margin={{ left: -18, right: 10, top: 4 }}><defs><linearGradient id="repairFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#75a87d" stopOpacity={0.35}/><stop offset="100%" stopColor="#75a87d" stopOpacity={0.03}/></linearGradient></defs><CartesianGrid vertical={false} stroke="#e7efe5"/><XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#829081" }}/><YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#829081" }}/><Tooltip contentStyle={{ borderRadius: 14, border: "1px solid #d9e5d6" }}/><Area type="monotone" dataKey="repairs" name="维修次数" stroke="#4a7c59" strokeWidth={2.5} fill="url(#repairFill)" /></AreaChart></ResponsiveContainer></div> : <EmptyState title="暂无维修趋势数据" description="完成维修工单后，系统将根据完成时间自动汇总趋势。" />}</article><article className="industrial-card p-5"><div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold text-[#26392a]">设备状态分布</h2><p className="mt-1 text-xs text-[#829081]">当前台账状态实时汇总</p></div><Activity className="h-5 w-5 text-[#4a7c59]" /></div><div className="space-y-4">{statusCounts.map(item => <div key={item.status}><div className="mb-1.5 flex items-center justify-between text-sm"><span className="text-[#516552]">{statusMeta[item.status as keyof typeof statusMeta].label}</span><span className="font-semibold text-[#2d3b2d]">{item.count}</span></div><div className="h-2 overflow-hidden rounded-full bg-[#edf3ea]"><div className="h-full rounded-full bg-[#78a879]" style={{ width: `${equipment.data?.length ? (item.count / equipment.data.length) * 100 : 0}%` }} /></div></div>)}</div><div className="mt-6 rounded-2xl bg-[#f0f7ec] p-4 text-sm text-[#4e614f]">库存风险提示：<strong className="font-semibold">{data?.lowStockParts ?? 0}</strong> 项备件库存低于或等于安全库存。</div></article></section><section className="mt-5 grid gap-5 lg:grid-cols-2"><article className="industrial-card p-5"><h2 className="font-semibold text-[#26392a]">近期保养工单</h2><div className="mt-4">{maintenance.data?.length ? <div className="space-y-2">{maintenance.data.slice(0, 4).map(item => <div key={item.id} className="flex items-center justify-between rounded-xl bg-[#f8fbf6] px-3 py-2.5"><span className="text-sm text-[#405342]">工单 #{item.id}</span><Badge variant="outline" className="border-[#d7e6d5] bg-white text-[#5c735e]">{maintenanceStatus[item.status]}</Badge></div>)}</div> : <EmptyState title="暂无保养工单" description="新增周期性保养计划后，系统会立即生成首张待执行工单。" />}</div></article><article className="industrial-card p-5"><h2 className="font-semibold text-[#26392a]">关键运营说明</h2><div className="mt-4 space-y-3 text-sm leading-6 text-[#607260]"><p><span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#dcebd8] text-xs font-bold text-[#4a7c59]">1</span>设备状态的每一次变更均保留变更前后状态及操作者。</p><p><span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#dcebd8] text-xs font-bold text-[#4a7c59]">2</span>完成周期保养会自动将计划推进至下一周期并生成下一张工单。</p><p><span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#dcebd8] text-xs font-bold text-[#4a7c59]">3</span>备件出入库会写入不可缺失的库存流水和操作审计记录。</p></div></article></section></>;
+  return <><PageHeader eyebrow="设备运营中心" title="生产工艺设备仪表盘" description="围绕设备运行、保养、维修、资产与库存风险进行统一监控。" />
+<section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+<DataCard icon={Factory} label="设备总数" value={data?.totalEquipment ?? 0} hint="已纳入设备台账" />
+<DataCard icon={Gauge} label="在线率" value={`${data?.onlineRate ?? 0}%`} hint="运行中 / 非报废设备" tone="green" />
+<DataCard icon={Target} label="OEE 达标率" value={`${data?.oeeComplianceRate ?? 0}%`} hint={`阈值 ≥ ${data?.oeeOverview?.threshold ?? 0.9}，达标 ${data?.oeeOverview?.compliant ?? 0} 台`} tone="green" />
+<DataCard icon={Coins} label="资产原值" value={`${(data?.totalAssetValue ?? 0).toFixed(2)} 万`} hint="按 数量 × 单价 汇总" />
+</section>
+<section className="mt-5"><article className="industrial-card p-5">
+<div className="mb-4 flex items-center justify-between"><div><h2 className="font-semibold text-[#26392a]">BU 分布</h2><p className="mt-1 text-xs text-[#829081]">各业务单元设备数量与资产原值</p></div><Building2 className="h-5 w-5 text-[#4a7c59]" /></div>
+{data?.buDistribution?.length ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{data.buDistribution.map(bu => <div key={bu.buId} className="rounded-2xl border border-[#dcead8] bg-[#fbfdf9] p-4"><div className="flex items-center justify-between"><span className="text-sm font-semibold text-[#2f3e2f]">{bu.buCode}</span><span className="rounded-full bg-[#eaf3e6] px-2 py-0.5 text-xs text-[#56745b]">{bu.count} 台</span></div><p className="mt-2 truncate text-xs text-[#7c8c7b]">{bu.buName}</p><p className="mt-2 text-lg font-semibold text-[#405342]">{bu.assetValue.toFixed(2)} <span className="text-xs font-normal text-[#829081]">万</span></p></div>)}</div> : <p className="rounded-2xl bg-[#f8fbf6] p-4 text-sm text-[#829081]">暂无 BU 数据，在后台基础数据管理中新增 BU 后，这里将展示各 BU 的设备与资产分布。</p>}
+</article></section>
+<section className="mt-5 grid gap-5 lg:grid-cols-2">
+<article className="industrial-card p-5">
+<div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold text-[#26392a]">设备状态分布</h2><p className="mt-1 text-xs text-[#829081]">当前台账状态实时汇总</p></div><Activity className="h-5 w-5 text-[#4a7c59]" /></div>
+<div className="space-y-4">{(data?.statusBreakdown ?? []).map(item => <div key={item.status}><div className="mb-1.5 flex items-center justify-between text-sm"><span className="text-[#516552]">{item.label}</span><span className="font-semibold text-[#2d3b2d]">{item.count}</span></div><div className="h-2 overflow-hidden rounded-full bg-[#edf3ea]"><div className="h-full rounded-full bg-[#78a879]" style={{ width: `${data?.totalEquipment ? (item.count / data.totalEquipment) * 100 : 0}%` }} /></div></div>)}</div>
+</article>
+<article className="industrial-card p-5">
+<div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold text-[#26392a]">保修状态概览</h2><p className="mt-1 text-xs text-[#829081]">按保修到期日与 {data?.warrantyOverview?.dueSoonWindowDays ?? 90} 天临期窗口划分</p></div><ShieldCheck className="h-5 w-5 text-[#4a7c59]" /></div>
+<div className="grid gap-3 sm:grid-cols-2">
+<div className="rounded-2xl border border-rose-100 bg-rose-50/60 p-4"><p className="text-xs text-rose-700">已过保</p><p className="mt-1 text-2xl font-semibold text-rose-700">{data?.warrantyOverview?.expired ?? 0}<span className="ml-1 text-xs font-normal">台</span></p><p className="mt-1 text-xs text-rose-500">建议评估续保或更换</p></div>
+<div className="rounded-2xl border border-amber-100 bg-amber-50/60 p-4"><p className="text-xs text-amber-700">临期（{data?.warrantyOverview?.dueSoonWindowDays ?? 90} 天内到期）</p><p className="mt-1 text-2xl font-semibold text-amber-700">{data?.warrantyOverview?.dueSoon ?? 0}<span className="ml-1 text-xs font-normal">台</span></p><p className="mt-1 text-xs text-amber-600">提前安排保修检查</p></div>
+<div className="rounded-2xl border border-[#dcead8] bg-[#f7fbf4] p-4"><p className="text-xs text-[#56745b]">在保设备</p><p className="mt-1 text-2xl font-semibold text-[#3f6a45]">{data?.warrantyOverview?.inWarranty ?? 0}<span className="ml-1 text-xs font-normal">台</span></p><p className="mt-1 text-xs text-[#7c8c7b]">保修期在临期窗口之外</p></div>
+<div className="rounded-2xl border border-[#e4eee0] bg-white p-4"><p className="text-xs text-[#829081]">未录入</p><p className="mt-1 text-2xl font-semibold text-[#526652]">{data?.warrantyOverview?.notEntered ?? 0}<span className="ml-1 text-xs font-normal">台</span></p><p className="mt-1 text-xs text-[#9aa89a]">请在设备台账补充保修到期日</p></div>
+</div>
+</article>
+</section>
+<section className="mt-5 grid gap-5 lg:grid-cols-2">
+<article className="industrial-card p-5">
+<div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold text-[#26392a]">OEE 达标分析</h2><p className="mt-1 text-xs text-[#829081]">OEE ≥ {data?.oeeOverview?.threshold ?? 0.9} 计入达标</p></div><Target className="h-5 w-5 text-[#4a7c59]" /></div>
+<div className="flex items-baseline gap-2"><span className="text-4xl font-semibold text-[#2f3e2f]">{data?.oeeComplianceRate ?? 0}<span className="text-lg">%</span></span><span className="text-xs text-[#829081]">达标率</span></div>
+<div className="mt-4 grid grid-cols-3 gap-3 text-center">
+<div className="rounded-xl bg-[#f0f7ec] p-3"><p className="text-lg font-semibold text-[#3f6a45]">{data?.oeeOverview?.compliant ?? 0}</p><p className="mt-0.5 text-xs text-[#56745b]">达标</p></div>
+<div className="rounded-xl bg-[#fdf6ec] p-3"><p className="text-lg font-semibold text-amber-700">{data?.oeeOverview?.nonCompliant ?? 0}</p><p className="mt-0.5 text-xs text-amber-600">未达标</p></div>
+<div className="rounded-xl bg-[#f4f6f4] p-3"><p className="text-lg font-semibold text-[#526652]">{data?.oeeOverview?.notEntered ?? 0}</p><p className="mt-0.5 text-xs text-[#829081]">未录入</p></div>
+</div>
+<p className="mt-4 rounded-xl bg-[#f8fbf6] p-3 text-xs leading-5 text-[#607260]">未达标设备请在设备台账中补充 OEE 偏低原因，便于制定改进措施。</p>
+</article>
+<article className="industrial-card p-5">
+<div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold text-[#26392a]">资产与工龄</h2><p className="mt-1 text-xs text-[#829081]">关键等级、启用年份与高价值设备</p></div><Boxes className="h-5 w-5 text-[#4a7c59]" /></div>
+<div className="grid gap-5 sm:grid-cols-2">
+<div>
+<p className="mb-2 text-xs font-medium text-[#7c8c7b]">关键等级分布</p>
+<div className="space-y-2.5">{(data?.criticalityBreakdown ?? []).map(item => <div key={item.label}><div className="mb-1 flex items-center justify-between text-xs"><span className="text-[#516552]">{item.label}</span><span className="font-semibold text-[#2d3b2d]">{item.count}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-[#edf3ea]"><div className="h-full rounded-full bg-[#78a879]" style={{ width: `${data?.totalEquipment ? (item.count / data.totalEquipment) * 100 : 0}%` }} /></div></div>)}</div>
+<p className="mb-2 mt-4 text-xs font-medium text-[#7c8c7b]">启用年份分布</p>
+<div className="space-y-2.5">{(data?.ageDistribution ?? []).map(item => <div key={item.label}><div className="mb-1 flex items-center justify-between text-xs"><span className="text-[#516552]">{item.label}</span><span className="font-semibold text-[#2d3b2d]">{item.count}</span></div><div className="h-1.5 overflow-hidden rounded-full bg-[#edf3ea]"><div className="h-full rounded-full bg-[#78a879]" style={{ width: `${data?.totalEquipment ? (item.count / data.totalEquipment) * 100 : 0}%` }} /></div></div>)}</div>
+</div>
+<div>
+<p className="mb-2 text-xs font-medium text-[#7c8c7b]">资产原值 TOP5（万元）</p>
+<div className="space-y-2">{(data?.topValueEquipment ?? []).map((item, index) => <div key={item.id} className="flex items-center justify-between rounded-xl bg-[#f8fbf6] px-3 py-2"><span className="flex items-center gap-2 truncate text-xs text-[#405342]"><span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[11px] font-bold ${index === 0 ? "bg-[#4a7c59] text-white" : "bg-[#e3ecdf] text-[#56745b]"}`}>{index + 1}</span><span className="truncate">{item.code} · {item.name}</span></span><span className="shrink-0 text-sm font-semibold text-[#2d3b2d]">{item.assetValue.toFixed(2)}</span></div>)}
+{(data?.topValueEquipment ?? []).length === 0 && <p className="rounded-xl bg-[#f8fbf6] p-3 text-xs text-[#829081]">暂无同时录入数量与单价的设备，请在设备台账补充后查看。</p>}
+</div>
+</div>
+</div>
+</article>
+</section>
+</>;
 }
 
 export function InlineEquipmentDetailEditor({ item, businessUnits, factories, suppliers, isAdmin, onSave }: { item: any; businessUnits: any[]; factories: any[]; suppliers: any[]; isAdmin: boolean; onSave: (values: EquipmentForm) => Promise<unknown> }) {
