@@ -4,15 +4,12 @@ import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarInset, Si
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useIsMobile } from "@/hooks/useMobile";
 import { getSidebarPresentation, SIDEBAR_DEFAULT_OPEN } from "@/lib/sidebarPresentation";
-import { Boxes, ClipboardList, Gauge, Languages, PanelLeft, Settings2, ShieldCheck, Wrench } from "lucide-react";
+import { ClipboardList, Gauge, Languages, PanelLeft, ShieldCheck } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 
 const menuItems = [
   { icon: ClipboardList, label: "设备台账", labelEn: "Equipment Register", path: "/equipment" },
-  { icon: Settings2, label: "保养计划与工单", labelEn: "Maintenance Plans & Orders", path: "/maintenance" },
-  { icon: Wrench, label: "故障与维修", labelEn: "Faults & Repairs", path: "/repairs" },
-  { icon: Boxes, label: "备件 / 耗材", labelEn: "Parts & Consumables", path: "/parts" },
   { icon: ShieldCheck, label: "用户权限与日志", labelEn: "Users & Audit Log", path: "/users" },
   { icon: Gauge, label: "运营仪表盘", labelEn: "Operations Dashboard", path: "/dashboard" },
 ];
