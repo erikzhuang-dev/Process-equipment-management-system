@@ -13,4 +13,4 @@ bash scripts/ensure-seed.sh
 
 export NODE_ENV=development
 export PORT="${DEPLOY_RUN_PORT:-5000}"
-exec pnpm exec tsx watch server/_core/index.ts
+exec pnpm exec tsx watch --exclude ".manus-logs/**" --exclude "assets/**" --exclude "attached_assets/**" --exclude "public/**" --exclude "drizzle/**" --exclude "dist/**" --exclude "scripts/**" --exclude "client/**" --exclude "node_modules/**" --exclude "dist-public/**" server/_core/index.ts

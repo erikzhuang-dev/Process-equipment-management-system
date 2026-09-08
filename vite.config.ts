@@ -169,6 +169,19 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    watch: {
+      ignored: [
+        "**/.manus-logs/**",
+        "**/assets/**",
+        "**/attached_assets/**",
+        "**/public/**",
+        "**/drizzle/**",
+        "**/dist/**",
+        "**/dist-public/**",
+        "**/scripts/**",
+        "**/node_modules/**",
+      ],
+    },
     host: true,
     allowedHosts: [
       ".manuspre.computer",
