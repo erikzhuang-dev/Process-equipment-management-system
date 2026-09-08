@@ -241,21 +241,20 @@ export async function getPublicAdministrator() {
   const db = await getDb();
   if (!db) return undefined;
 
-  const existing = (await db.select().from(users).where(eq(users.openId, PUBLIC_ADMIN_OPEN_ID)).limit(1))[0];
-  if (!existing) {
-    await db.insert(users).values({
+  // 幂等 upsert：并发首次访问不会因 openId 唯一键竞态而报错
+  await db
+    .insert(users)
+    .values({
       openId: PUBLIC_ADMIN_OPEN_ID,
       name: "公开管理员工作站",
       email: null,
       loginMethod: "public-access",
       role: "admin",
       lastSignedIn: new Date(),
+    })
+    .onDuplicateKeyUpdate({
+      set: { role: "admin", lastSignedIn: new Date() },
     });
-  } else if (existing.role !== "admin") {
-    await db.update(users).set({ role: "admin", lastSignedIn: new Date() }).where(eq(users.id, existing.id));
-  } else {
-    await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, existing.id));
-  }
 
   return (await db.select().from(users).where(eq(users.openId, PUBLIC_ADMIN_OPEN_ID)).limit(1))[0];
 }
