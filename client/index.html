@@ -3,6 +3,71 @@
 
   <head>
     <meta charset="UTF-8" />
+    <script>
+      /*
+        HMR 稳定性补丁（在 vite client 之前同步执行）：
+        1) 给 HMR WebSocket 增加应用层心跳，避免经公网代理时空闲连接被掐断；
+        2) 拦截 vite client 断连后的 /__vite_ping 轮询，阻止其自动 location.reload()，
+           防止用户正在填写的数据因网络抖动被整页刷新丢弃。
+      */
+      (function () {
+        var NativeWebSocket = window.WebSocket;
+        var hmrSockets = [];
+        function HMRWebSocket(url, protocols) {
+          var socket =
+            protocols !== undefined
+              ? new NativeWebSocket(url, protocols)
+              : new NativeWebSocket(url);
+          try {
+            if (
+              typeof url === "string" &&
+              (url.indexOf("ws:") === 0 || url.indexOf("wss:") === 0) &&
+              url.indexOf("token=") !== -1
+            ) {
+              hmrSockets.push(socket);
+            }
+          } catch (e) {
+            /* ignore */
+          }
+          return socket;
+        }
+        HMRWebSocket.prototype = NativeWebSocket.prototype;
+        HMRWebSocket.CONNECTING = NativeWebSocket.CONNECTING;
+        HMRWebSocket.OPEN = NativeWebSocket.OPEN;
+        HMRWebSocket.CLOSING = NativeWebSocket.CLOSING;
+        HMRWebSocket.CLOSED = NativeWebSocket.CLOSED;
+        window.WebSocket = HMRWebSocket;
+        setInterval(function () {
+          for (var i = hmrSockets.length - 1; i >= 0; i--) {
+            var state = hmrSockets[i].readyState;
+            if (state === 1) {
+              try {
+                hmrSockets[i].send(JSON.stringify({ type: "ping" }));
+              } catch (e) {
+                /* ignore */
+              }
+            } else if (state >= 2) {
+              hmrSockets.splice(i, 1);
+            }
+          }
+        }, 25000);
+        var nativeFetch = window.fetch;
+        window.fetch = function (input, init) {
+          try {
+            var url =
+              typeof input === "string" ? input : input && input.url;
+            if (url && String(url).indexOf("__vite_ping") !== -1) {
+              return new Promise(function (_resolve, reject) {
+                reject(new Error("vite-ping-blocked"));
+              });
+            }
+          } catch (e) {
+            /* ignore */
+          }
+          return nativeFetch.call(window, input, init);
+        };
+      })();
+    </script>
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1" />
