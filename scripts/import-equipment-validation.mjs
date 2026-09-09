@@ -12,7 +12,7 @@ const parsed = rows.map(row => ({
   businessUnitCode: String(row["BU编码"] || "") || undefined, factoryCode: String(row["工厂编码"] || "") || undefined, supplierCode: String(row["供应商编码"] || "") || undefined,
   supplier: String(row["供应商"] || "") || undefined, assetCategory: String(row["资产类别"] || "") || undefined, criticality: String(row["关键等级"] || "") || undefined, responsibleOwner: String(row["责任人"] || "") || undefined,
   commissionedAt: parseDate(row["启用日期"]), warrantyExpiresAt: parseDate(row["保修到期日"]), hourlyCapacity: Number(row["每小时产能（pcs)"] ?? row["每小时产能（pcs）"]), oee: Number(row["OEE"]), lowOeeReason: String(row["OEE偏低原因"] || "") || undefined,
-  energyConsumption: Number(row["能耗（kW）"]), quantity: Number(row["数量（台）"]), unitPrice: Number(row["单价（万元）"]), depreciationYears: Number(row["折旧年数"]), lossFactor: Number(row["损耗系数"]), investmentIncluded: String(row["计入投资"]) === "是", notes: String(row["备注"] || "") || undefined,
+  energyConsumption: Number(row["能耗（kW）"]), quantity: Number(row["数量（台）"]), unitPrice: Number(row["单价（万元）"]), depreciationYears: Number(row["折旧年数"]), lossFactor: Number(row["损耗系数"]), notes: String(row["备注"] || "") || undefined,
 }));
 const result = await importEquipment(parsed, 1);
 console.log(JSON.stringify({ ...result, codes: parsed.map(row => row.code) }, null, 2));

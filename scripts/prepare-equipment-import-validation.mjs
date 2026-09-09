@@ -17,8 +17,8 @@ const validationRows = [
   ["PEM-VAL-008", "系统验证·输液器组装线", "INF-500", "五模块", "输液器装配", "BU4-D01", "BU4", "VAI-VALID", "SUP-VALID-03", "自动装配设备", "A", "孙工", "2023-11-10", "2026-11-09", 500, 0.93, "", 14.2, 2, 96.0, 8, 0.02, "是"],
   ["PEM-VAL-009", "系统验证·导管成型机", "CAT-150", "精密挤出", "导管成型", "BU4-D02", "BU4", "VAI-VALID", "SUP-VALID-01", "挤出成型设备", "A", "孙工", "2024-01-30", "2027-01-29", 150, 0.9, "", 11.8, 1, 58.4, 8, 0.03, "是"],
   ["PEM-VAL-010", "系统验证·泄漏测试仪", "LKG-240", "四通道", "密封测试", "BU4-Q01", "BU4", "VAI-VALID", "SUP-VALID-04", "质量检测设备", "B", "周工", "2024-06-22", "2027-06-21", 240, 0.96, "", 2.7, 3, 21.5, 5, 0.01, "否"],
-].map(([code, name, model, specification, process, location, businessUnitCode, factoryCode, supplierCode, assetCategory, criticality, responsibleOwner, commissionedAt, warrantyExpiresAt, hourlyCapacity, oee, lowOeeReason, energyConsumption, quantity, unitPrice, depreciationYears, lossFactor, investmentIncluded]) => ({
-  "编号": code, "名称": name, "型号": model, "规格": specification, "所属工序": process, "位置": location, "状态": "运行中", "BU编码": businessUnitCode, "工厂编码": factoryCode, "供应商编码": supplierCode, "供应商": "", "资产类别": assetCategory, "关键等级": criticality, "责任人": responsibleOwner, "启用日期": commissionedAt, "保修到期日": warrantyExpiresAt, "每小时产能（pcs）": hourlyCapacity, "OEE": oee, "OEE偏低原因": lowOeeReason, "能耗（kW）": energyConsumption, "数量（台）": quantity, "单价（万元）": unitPrice, "折旧年数": depreciationYears, "损耗系数": lossFactor, "计入投资": investmentIncluded, "备注": "系统管理员 Excel 导入验证数据；上线生产前请替换为现场实际台账。",
+].map(([code, name, model, specification, process, location, businessUnitCode, factoryCode, supplierCode, assetCategory, criticality, responsibleOwner, commissionedAt, warrantyExpiresAt, hourlyCapacity, oee, lowOeeReason, energyConsumption, quantity, unitPrice, depreciationYears, lossFactor]) => ({
+  "编号": code, "名称": name, "型号": model, "规格": specification, "所属工序": process, "位置": location, "状态": "运行中", "BU编码": businessUnitCode, "工厂编码": factoryCode, "供应商编码": supplierCode, "供应商": "", "资产类别": assetCategory, "关键等级": criticality, "责任人": responsibleOwner, "启用日期": commissionedAt, "保修到期日": warrantyExpiresAt, "每小时产能（pcs）": hourlyCapacity, "OEE": oee, "OEE偏低原因": lowOeeReason, "能耗（kW）": energyConsumption, "数量（台）": quantity, "单价（万元）": unitPrice, "折旧年数": depreciationYears, "损耗系数": lossFactor, "备注": "系统管理员 Excel 导入验证数据；上线生产前请替换为现场实际台账。",
 }));
 
 async function writeWorkbook(file, sheetName, rows) {
@@ -33,7 +33,7 @@ const [baseline] = await connection.query(`
   SELECT e.code AS "编号", e.name AS "名称", e.model AS "型号", e.specification AS "规格", e.process AS "所属工序", e.location AS "位置",
     CASE e.status WHEN 'running' THEN '运行中' WHEN 'stopped' THEN '停机' WHEN 'maintenance' THEN '维修中' ELSE '报废' END AS "状态",
     bu.code AS "BU编码", f.code AS "工厂编码", s.code AS "供应商编码", e.supplier AS "供应商", e.assetCategory AS "资产类别", e.criticality AS "关键等级", e.responsibleOwner AS "责任人",
-    DATE_FORMAT(e.commissionedAt, '%Y-%m-%d') AS "启用日期", DATE_FORMAT(e.warrantyExpiresAt, '%Y-%m-%d') AS "保修到期日", e.hourlyCapacity AS "每小时产能（pcs）", e.oee AS "OEE", e.lowOeeReason AS "OEE偏低原因", e.energyConsumption AS "能耗（kW）", e.quantity AS "数量（台）", e.unitPrice AS "单价（万元）", e.depreciationYears AS "折旧年数", e.lossFactor AS "损耗系数", CASE e.investmentIncluded WHEN 1 THEN '是' WHEN 0 THEN '否' ELSE '' END AS "计入投资", e.notes AS "备注"
+    DATE_FORMAT(e.commissionedAt, '%Y-%m-%d') AS "启用日期", DATE_FORMAT(e.warrantyExpiresAt, '%Y-%m-%d') AS "保修到期日", e.hourlyCapacity AS "每小时产能（pcs）", e.oee AS "OEE", e.lowOeeReason AS "OEE偏低原因", e.energyConsumption AS "能耗（kW）", e.quantity AS "数量（台）", e.unitPrice AS "单价（万元）", e.depreciationYears AS "折旧年数", e.lossFactor AS "损耗系数", e.notes AS "备注"
   FROM equipment e LEFT JOIN business_units bu ON bu.id = e.businessUnitId LEFT JOIN factories f ON f.id = e.factoryId LEFT JOIN suppliers s ON s.id = e.supplierId ORDER BY e.id
 `);
 await connection.end();

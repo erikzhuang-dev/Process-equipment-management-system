@@ -78,7 +78,6 @@ export const equipmentSchema = z.object({
   unitPrice: z.coerce.number().min(0).nullable().optional(),
   depreciationYears: z.coerce.number().int().min(0).nullable().optional(),
   lossFactor: z.coerce.number().min(0).nullable().optional(),
-  investmentIncluded: z.boolean().nullable().optional(),
   notes: z.string().max(4000).nullable().optional(),
 });
 

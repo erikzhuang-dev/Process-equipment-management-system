@@ -100,7 +100,6 @@ export async function parseEquipmentWorkbook(file: File) {
       unitPrice: optionalNumber(row, "单价（万元）"),
       depreciationYears: optionalNumber(row, "折旧年数"),
       lossFactor: optionalNumber(row, "损耗系数"),
-      investmentIncluded: optionalBoolean(row, "计入投资"),
       notes: optionalText(row, "备注"),
     };
   });

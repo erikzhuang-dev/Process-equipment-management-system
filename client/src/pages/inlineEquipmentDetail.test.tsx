@@ -7,7 +7,7 @@ import { EquipmentTableRow, InlineEquipmentDetailEditor } from "./Home";
 
 const item = {
   id: 1, code: "QA-PEM-001", name: "工艺设备核验机", model: "QA-MODEL-01", specification: "1200×800×1600 mm", process: "装配工序", location: "A区-装配线-02", status: "running" as const,
-  supplier: "", supplierId: null, businessUnitId: 1, factoryId: null, hourlyCapacity: null, oee: null, lowOeeReason: null, energyConsumption: null, quantity: null, unitPrice: null, depreciationYears: null, lossFactor: null, investmentIncluded: false, notes: "",
+  supplier: "", supplierId: null, businessUnitId: 1, factoryId: null, hourlyCapacity: null, oee: null, lowOeeReason: null, energyConsumption: null, quantity: null, unitPrice: null, depreciationYears: null, lossFactor: null, notes: "",
 };
 
 describe("行内设备详情交互", () => {

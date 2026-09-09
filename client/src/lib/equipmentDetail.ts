@@ -1,7 +1,6 @@
-export function calculateEquipmentAmounts(input: { quantity: number | null; unitPrice: number | null; lossFactor: number | null; investmentIncluded: boolean | null }) {
-  if (input.quantity === null || input.unitPrice === null) return { totalAmount: null, investmentAmount: null };
-  const totalAmount = input.quantity * input.unitPrice;
-  return { totalAmount, investmentAmount: input.investmentIncluded ? totalAmount : 0 };
+export function calculateEquipmentAmounts(input: { quantity: number | null; unitPrice: number | null }) {
+  if (input.quantity === null || input.unitPrice === null) return { totalAmount: null };
+  return { totalAmount: input.quantity * input.unitPrice };
 }
 
 export function displayOee(value: string | number | null) {

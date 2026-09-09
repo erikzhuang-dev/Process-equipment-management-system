@@ -103,7 +103,6 @@ export const equipment = mysqlTable(
     unitPrice: decimal("unitPrice", { precision: 14, scale: 2 }),
     depreciationYears: int("depreciationYears"),
     lossFactor: decimal("lossFactor", { precision: 8, scale: 4 }),
-    investmentIncluded: boolean("investmentIncluded"),
     notes: text("notes"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

@@ -1,0 +1,1 @@
+ALTER TABLE `equipment` DROP COLUMN `investmentIncluded`;

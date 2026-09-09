@@ -57,6 +57,13 @@
       "when": 1788838475113,
       "tag": "0007_famous_franklin_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1788918821329,
+      "tag": "0008_last_sally_floyd",
+      "breakpoints": true
     }
   ]
 }
