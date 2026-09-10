@@ -18,16 +18,20 @@ if ! mysqladmin ping --silent 2>/dev/null; then
 fi
 
 # 表未就绪（迁移未完成）时跳过，下次启动再补
-if ! mysql -u"${DB_USER}" -p"${DB_PASS}" -e "SELECT 1 FROM \`${DB_NAME}\`.equipment LIMIT 1" >/dev/null 2>&1; then
-  echo "[ensure-seed] equipment table not ready, skip"
+if ! mysql -u"${DB_USER}" -p"${DB_PASS}" -e "SELECT 1 FROM \`${DB_NAME}\`.business_units LIMIT 1" >/dev/null 2>&1; then
+  echo "[ensure-seed] business_units table not ready, skip"
   exit 0
 fi
 
-COUNT=$(mysql -u"${DB_USER}" -p"${DB_PASS}" -N -B -e "SELECT COUNT(*) FROM \`${DB_NAME}\`.equipment" 2>/dev/null || echo 0)
-if [ "$COUNT" = "0" ]; then
-  echo "[ensure-seed] equipment empty, importing seed data..."
-  mysql -u"${DB_USER}" -p"${DB_PASS}" "${DB_NAME}" < "$SEED_FILE" \
-    && echo "[ensure-seed] seed data imported"
+# 无条件执行幂等补导：
+# 沙箱重启/存储回滚可能造成"全空"或"部分数据残留"（如 BU 在而设备缺失），
+# INSERT IGNORE 对已存在行自动跳过、缺失行自动补齐，任何不完整状态都会被修复；
+# 用户运行期新增的数据（主键不冲突）不受影响。
+COUNT=$(mysql -u"${DB_USER}" -p"${DB_PASS}" -N -B -e "SELECT COUNT(*) FROM \`${DB_NAME}\`.business_units" 2>/dev/null || echo 0)
+echo "[ensure-seed] current state: ${COUNT} business units, importing idempotent seed..."
+if mysql -u"${DB_USER}" -p"${DB_PASS}" "${DB_NAME}" < "$SEED_FILE"; then
+  EQ=$(mysql -u"${DB_USER}" -p"${DB_PASS}" -N -B -e "SELECT COUNT(*) FROM \`${DB_NAME}\`.equipment" 2>/dev/null || echo "?")
+  echo "[ensure-seed] seed ensured (${EQ} equipment)"
 else
-  echo "[ensure-seed] data exists (${COUNT} equipment), skip"
+  echo "[ensure-seed] seed import failed" >&2
 fi

@@ -66,6 +66,40 @@
           }
           return nativeFetch.call(window, input, init);
         };
+        /* 3) 拦截平台容器下发的整页刷新消息（SpacePreviewerChannel type=refresh）：
+              沙箱服务重启/状态变化时平台会触发 reload，丢失用户正在填写的内容。
+              纯 reload（无新路径）直接吞掉；带新路径的真实导航跳转仍然放行。 */
+        window.addEventListener(
+          "message",
+          function (event) {
+            var data = event.data;
+            if (
+              !data ||
+              data.type !== "SpacePreviewerChannel" ||
+              !data.payload ||
+              data.payload.type !== "refresh"
+            ) {
+              return;
+            }
+            var target =
+              data.payload.payload && data.payload.payload.path
+                ? String(data.payload.payload.path)
+                : "";
+            if (!target) {
+              event.stopImmediatePropagation();
+              return;
+            }
+            try {
+              var targetPath = new URL(target, window.location.href).pathname;
+              if (targetPath === window.location.pathname) {
+                event.stopImmediatePropagation();
+              }
+            } catch (e) {
+              event.stopImmediatePropagation();
+            }
+          },
+          true
+        );
       })();
     </script>
     <meta
