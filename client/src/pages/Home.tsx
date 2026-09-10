@@ -91,11 +91,9 @@ function dateText(value?: Date | null) {
   return new Date(value).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-const dateOnly = (value?: Date | string | null) => value ? new Date(value).toISOString().slice(0, 10) : "";
 const equipmentExportRow = (item: any, businessUnits: any[] = [], factories: any[] = [], suppliers: any[] = []) => ({
   "编号": item.code, "名称": item.name, "型号": item.model, "规格": item.specification, "所属工序": item.process, "位置": item.location, "状态": statusMeta[item.status as keyof typeof statusMeta].label,
   "BU编码": businessUnits.find(entry => entry.id === item.businessUnitId)?.code ?? "", "工厂编码": factories.find(entry => entry.id === item.factoryId)?.code ?? "", "供应商编码": suppliers.find(entry => entry.id === item.supplierId)?.code ?? "", "供应商": item.supplier,
-  "资产类别": item.assetCategory, "关键等级": item.criticality, "责任人": item.responsibleOwner, "启用日期": dateOnly(item.commissionedAt), "保修到期日": dateOnly(item.warrantyExpiresAt),
   "每小时产能（pcs）": item.hourlyCapacity, "OEE": item.oee, "OEE偏低原因": item.lowOeeReason, "能耗（kW）": item.energyConsumption, "数量（台）": item.quantity, "单价（万元）": item.unitPrice, "折旧年数": item.depreciationYears, "损耗系数": item.lossFactor, "备注": item.notes,
 });
 

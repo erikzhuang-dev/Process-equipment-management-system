@@ -4,7 +4,7 @@ const file = "/home/ubuntu/exports/process-equipment-management/设备台账-导
 const workbook = XLSX.readFile(file, { cellDates: true });
 const sheet = workbook.Sheets[workbook.SheetNames[0]];
 const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-const expectedColumns = ["编号", "名称", "BU编码", "工厂编码", "供应商编码", "资产类别", "关键等级", "责任人", "启用日期", "保修到期日", "OEE"];
+const expectedColumns = ["编号", "名称", "BU编码", "工厂编码", "供应商编码", "OEE"];
 const columns = Object.keys(rows[0] ?? {});
 const validationRows = rows.filter(row => String(row["编号"]).startsWith("PEM-VAL-"));
 const missingColumns = expectedColumns.filter(column => !columns.includes(column));
