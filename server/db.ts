@@ -25,10 +25,17 @@ import { assertOwnerRoleIsRetained } from "./authorization";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+// 默认连接串：发布环境无 .env（不入库）时，与 ensure-db.sh 创建的本地库保持一致
+const DEFAULT_DATABASE_URL = "mysql://pems:pems_local_2024@127.0.0.1:3306/pems";
+
+export function resolveDatabaseUrl() {
+  return process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
+}
+
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
+  if (!_db) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _db = drizzle(resolveDatabaseUrl());
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
