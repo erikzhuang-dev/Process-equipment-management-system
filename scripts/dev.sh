@@ -98,7 +98,7 @@ LOG_FILE="${LOG_DIR}/app.log"
 PID_FILE="${LOG_DIR}/server.pid"
 
 # detached 出去的进程没人负责回收，超过这个时长就自己退出，避免端口与内存长期泄露。
-MAX_RUNTIME_SECONDS=3600
+MAX_RUNTIME_SECONDS=86400
 
 timeout_watchdog_enabled() {
   [[ -z "${COZE_EVAL:-}" && -z "${COZE_PROJECT_TYPE:-}" ]]
