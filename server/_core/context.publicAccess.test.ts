@@ -28,7 +28,7 @@ describe("公开管理员上下文", () => {
   it("未携带登录会话时使用可审计的公开管理员身份", async () => {
     mocks.authenticateRequest.mockRejectedValue(new Error("no session"));
     mocks.getPublicAdministrator.mockResolvedValue(publicAdministrator);
-    const ctx = await createContext({ req: {} as never, res: {} as never });
+    const ctx = await createContext({ req: { headers: new Headers() } } as never);
     expect(ctx.user).toEqual(publicAdministrator);
     expect(mocks.getPublicAdministrator).toHaveBeenCalledOnce();
   });
@@ -36,7 +36,7 @@ describe("公开管理员上下文", () => {
   it("认证 SDK 返回空身份时同样使用公开管理员身份", async () => {
     mocks.authenticateRequest.mockResolvedValue(null);
     mocks.getPublicAdministrator.mockResolvedValue(publicAdministrator);
-    const ctx = await createContext({ req: {} as never, res: {} as never });
+    const ctx = await createContext({ req: { headers: new Headers() } } as never);
     expect(ctx.user).toEqual(publicAdministrator);
     expect(mocks.getPublicAdministrator).toHaveBeenCalledOnce();
   });
@@ -44,7 +44,7 @@ describe("公开管理员上下文", () => {
   it("已有有效登录会话时保留原身份", async () => {
     const signedInUser = { ...publicAdministrator, id: 7, openId: "signed-in-admin", name: "Existing Admin" };
     mocks.authenticateRequest.mockResolvedValue(signedInUser);
-    const ctx = await createContext({ req: {} as never, res: {} as never });
+    const ctx = await createContext({ req: { headers: new Headers() } } as never);
     expect(ctx.user).toEqual(signedInUser);
     expect(mocks.getPublicAdministrator).not.toHaveBeenCalled();
   });

@@ -1,21 +1,24 @@
-import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
+import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import type { User } from "../../drizzle/schema";
 import { getPublicAdministrator } from "../db";
 import { sdk } from "./sdk";
 
+/**
+ * Next.js fetch 版 tRPC 上下文。
+ * 原 Express 版（CreateExpressContextOptions）已随迁移改为 Request/Headers 语义。
+ */
 export type TrpcContext = {
-  req: CreateExpressContextOptions["req"];
-  res: CreateExpressContextOptions["res"];
+  req: Request;
   user: User | null;
 };
 
 export async function createContext(
-  opts: CreateExpressContextOptions
+  opts: FetchCreateContextFnOptions
 ): Promise<TrpcContext> {
   let user: User | null = null;
 
   try {
-    user = await sdk.authenticateRequest(opts.req);
+    user = await sdk.authenticateRequest(opts.req.headers);
   } catch (error) {
     user = null;
   }
@@ -27,7 +30,6 @@ export async function createContext(
 
   return {
     req: opts.req,
-    res: opts.res,
     user,
   };
 }

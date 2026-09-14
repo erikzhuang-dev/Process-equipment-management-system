@@ -31,8 +31,7 @@ function createStandardUserContext(): TrpcContext {
       updatedAt: new Date(),
       lastSignedIn: new Date(),
     },
-    req: { protocol: "https", headers: {} } as TrpcContext["req"],
-    res: { clearCookie: () => undefined } as TrpcContext["res"],
+    req: new Request("https://localhost/api/trpc"),
   };
 }
 

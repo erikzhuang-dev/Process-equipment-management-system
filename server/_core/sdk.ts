@@ -2,7 +2,6 @@ import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS, decodeOAuthState } from "@s
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
-import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
@@ -30,12 +29,7 @@ const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserI
 
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
-    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
-    if (!ENV.oAuthServerUrl) {
-      console.error(
-        "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
-      );
-    }
+    // 初始化静默：未配置 OAUTH_SERVER_URL 时由 auth 路由走公共管理员兜底
   }
 
   private decodeState(state: string): string {
@@ -255,16 +249,16 @@ class SDKServer {
     } as GetUserInfoWithJwtResponse;
   }
 
-  async authenticateRequest(req: Request): Promise<AuthenticatedUser> {
+  async authenticateRequest(headers: Headers): Promise<AuthenticatedUser> {
     // 1. Prefer the session cookie (regular OAuth login).
-    const cookies = this.parseCookies(req.headers.cookie);
+    const cookies = this.parseCookies(headers.get("cookie") ?? "");
     let sessionToken = cookies.get(COOKIE_NAME);
 
     // 2. Fallback to the Authorization header (Preview auto-login via
     //    sessionStorage), used when the browser blocks iframe cookies such as
     //    Safari ITP, private browsing, or iOS/Android WebView.
     if (!sessionToken) {
-      const authHeader = req.headers.authorization;
+      const authHeader = headers.get("authorization");
       if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
         sessionToken = authHeader.slice(7);
       }

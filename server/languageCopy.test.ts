@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { languageCopy } from "../client/src/contexts/languageCopy";
+import { languageCopy } from "../src/contexts/languageCopy";
 
 describe("权限受限页双语文案", () => {
   it("在英文模式下提供完整的英文标题和说明", () => {

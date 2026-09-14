@@ -1,6 +1,5 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { COOKIE_NAME } from "@shared/const";
 import {
   changeEquipmentStatus,
   completeMaintenanceWorkOrder,
@@ -48,7 +47,6 @@ import {
   listEquipmentFamilies,
 } from "./db";
 import { assertAdminRole } from "./authorization";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 
@@ -110,8 +108,11 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
+    logout: publicProcedure.mutation(() => {
+      // Next.js 迁移说明：原实现通过 ctx.res.clearCookie 清理会话 cookie。
+      // 当前运行形态（本地/发布环境无 OAuth，公共管理员兜底）下没有真实
+      // 会话 cookie，清 cookie 无实际意义，故改为 no-op；接入平台 OAuth
+      // 后可在 Route Handler 层通过 Set-Cookie 头恢复该逻辑。
       return { success: true } as const;
     }),
   }),

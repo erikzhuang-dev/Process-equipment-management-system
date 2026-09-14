@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateEquipmentAmounts, displayOee } from "../client/src/lib/equipmentDetail";
+import { calculateEquipmentAmounts, displayOee } from "../src/lib/equipmentDetail";
 
 describe("设备详情金额计算", () => {
   it("按数量与单价计算合计金额", () => {

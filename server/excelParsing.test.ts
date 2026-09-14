@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { describe, expect, it } from "vitest";
-import { parseEquipmentWorkbook, parseMaintenanceWorkbook, parseRepairWorkbook } from "../client/src/lib/excel";
+import { parseEquipmentWorkbook, parseMaintenanceWorkbook, parseRepairWorkbook } from "../src/lib/excel";
 
 function workbookFile(rows: Record<string, unknown>[]) {
   const workbook = XLSX.utils.book_new();
