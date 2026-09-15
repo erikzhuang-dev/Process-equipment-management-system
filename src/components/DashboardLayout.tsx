@@ -38,7 +38,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
   const isMobile = useIsMobile();
   const { isCollapsed } = getSidebarPresentation(state);
   const { current } = useIdentity();
-  const visibleMenuItems = menuItems.filter(item => !("adminOnly" in item && item.adminOnly) || current?.roleKey === "system_admin");
+  const visibleMenuItems = menuItems.filter(item => !("adminOnly" in item && item.adminOnly) || current?.roleKey === "admin");
   const active = menuItems.find(item => item.match(location));
   const labelOf = (item: typeof menuItems[number]) => language === "en" ? item.labelEn : item.label;
   useEffect(() => { if (isCollapsed) setIsResizing(false); }, [isCollapsed]);

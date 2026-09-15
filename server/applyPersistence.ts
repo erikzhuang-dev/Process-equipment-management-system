@@ -21,12 +21,10 @@ import {
   quotations,
 } from "../drizzle/schema";
 import { getDb } from "./db";
-import { type Thresholds } from "../shared/apply";
 import {
   APPROVAL_NODES,
   CHANGE_TYPE_META,
   QUOTATION_MIN_COUNT,
-  THRESHOLD_META,
 } from "../shared/apply";
 import {
   buildChangeChain,
@@ -38,14 +36,12 @@ import {
   restoredStatusFor,
   serializeChain,
 } from "./applyEngine";
-import { requireNodeActor, requireOwnerOrAdmin, requireRole, type ActingIdentity } from "./applyAuthorization";
+import { requireAdmin, requireNodeActor, requireOwnerOrAdmin, type ActingIdentity } from "./applyAuthorization";
 import type {
   ApprovalNodeKey,
-  ApplyRoleKey,
   ApplyStatus,
   ChangeType,
   PurchaseBuyType,
-  ThresholdKey,
   Urgency,
 } from "../shared/apply";
 
@@ -90,7 +86,7 @@ function recordTx(tx: Tx, input: {
   });
 }
 
-function notifyRoleTx(tx: Tx, roleKey: ApplyRoleKey, payload: { type: string; title: string; content?: string; link?: string }) {
+function notifyRoleTx(tx: Tx, roleKey: "admin", payload: { type: string; title: string; content?: string; link?: string }) {
   return tx
     .select({ id: applyUsers.id })
     .from(applyUsers)
@@ -137,25 +133,6 @@ async function operationLogTx(tx: Tx, input: { module: string; action: string; t
   });
 }
 
-export async function getThresholds(): Promise<Thresholds> {
-  const db = await getDb();
-  const thresholds: Thresholds = {
-    CHG_L1: THRESHOLD_META.CHG_L1.default,
-    CHG_L2: THRESHOLD_META.CHG_L2.default,
-    CHG_GM: THRESHOLD_META.CHG_GM.default,
-  };
-  if (!db) return thresholds;
-  const rows = await db.select().from(applySettings);
-  for (const row of rows) {
-    const key = row.settingKey as ThresholdKey;
-    if (key in thresholds) {
-      const value = Number(row.settingValue);
-      if (Number.isFinite(value) && value >= 0) thresholds[key] = value;
-    }
-  }
-  return thresholds;
-}
-
 /* ---------------- 创建 ---------------- */
 
 export interface CreateChangeInput {
@@ -195,8 +172,7 @@ export async function createChangeApplyTx(identity: ActingIdentity, input: Creat
     throw new TRPCError({ code: "BAD_REQUEST", message: "预估费用必须大于 0（移装申请除外）" });
   }
 
-  const thresholds = await getThresholds();
-  const chain = buildChangeChain({ changeType: input.changeType, estimatedFee: input.estimatedFee, thresholds });
+  const chain = buildChangeChain();
   const applyNo = await nextApplyNo("CHG");
   const lockStatus = lockStatusFor(input.changeType);
   const typeMeta = CHANGE_TYPE_META[input.changeType];
@@ -240,7 +216,7 @@ export async function createChangeApplyTx(identity: ActingIdentity, input: Creat
       actor: identity,
       comment: `${typeMeta.nameZh} · 预估费用 ${input.estimatedFee} 万元`,
     });
-    await notifyRoleTx(tx, APPROVAL_NODES[chain[0] as ApprovalNodeKey].roleKey, {
+    await notifyRoleTx(tx, "admin", {
       type: "approval_pending",
       title: `新修改申请待审批：${input.title}`,
       content: `${identity.name ?? "申请人"} 提交了 ${typeMeta.nameZh}（${applyNo}），请及时处理`,
@@ -279,7 +255,6 @@ export async function createPurchaseApplyTx(identity: ActingIdentity, input: Cre
   if (input.buyType === "replace" && !input.replaceEquipmentId) {
     throw new TRPCError({ code: "BAD_REQUEST", message: "替换购置必须选择被替换的现有设备" });
   }
-  const thresholds = await getThresholds();
   const chain = buildPurchaseChain();
   const applyNo = await nextApplyNo("PUR");
   const expectedAt = input.expectedDate ? new Date(`${input.expectedDate}T00:00:00`) : null;
@@ -321,7 +296,7 @@ export async function createPurchaseApplyTx(identity: ActingIdentity, input: Cre
       actor: identity,
       comment: `预算 ${input.budget} 万元 · 数量 ${input.quantity}`,
     });
-    await notifyRoleTx(tx, APPROVAL_NODES[chain[0] as ApprovalNodeKey].roleKey, {
+    await notifyRoleTx(tx, "admin", {
       type: "approval_pending",
       title: `新购买申请待审批：${input.title}`,
       content: `${identity.name ?? "申请人"} 提交了购买申请（${applyNo}），预算 ${input.budget} 万元`,
@@ -367,7 +342,7 @@ export async function withdrawApplyTx(applyType: "change" | "purchase", id: numb
       }
     }
     await recordTx(tx, { applyType, applyId: id, nodeKey: "withdraw", nodeName: "撤回申请", action: "withdraw", actor: identity });
-    await notifyRoleTx(tx, "equipment_admin", {
+    await notifyRoleTx(tx, "admin", {
       type: "apply_withdrawn",
       title: `申请已撤回：${apply.applyNo}`,
       content: `${identity.name ?? "申请人"} 撤回了申请「${apply.title}」`,
@@ -402,8 +377,7 @@ export async function resubmitChangeApplyTx(identity: ActingIdentity, input: Res
   requireOwnerOrAdmin({ user: identity, submitterId: apply.submitterId });
 
   const estimatedFee = input.estimatedFee ?? Number(apply.estimatedFee);
-  const thresholds = await getThresholds();
-  const chain = buildChangeChain({ changeType: apply.changeType as ChangeType, estimatedFee, thresholds });
+  const chain = buildChangeChain();
 
   return db.transaction(async tx => {
     await tx
@@ -429,7 +403,7 @@ export async function resubmitChangeApplyTx(identity: ActingIdentity, input: Res
       actor: identity,
       comment: "按驳回意见修改后重新提交",
     });
-    await notifyRoleTx(tx, APPROVAL_NODES[chain[0] as ApprovalNodeKey].roleKey, {
+    await notifyRoleTx(tx, "admin", {
       type: "approval_pending",
       title: `修改申请重新提交：${apply.title}`,
       content: `${identity.name ?? "申请人"} 重新提交了 ${apply.applyNo}，请审批`,
@@ -448,7 +422,6 @@ export async function resubmitPurchaseApplyTx(identity: ActingIdentity, input: {
   requireOwnerOrAdmin({ user: identity, submitterId: apply.submitterId });
 
   const budget = input.budget ?? Number(apply.budget);
-  const thresholds = await getThresholds();
   const chain = buildPurchaseChain();
 
   return db.transaction(async tx => {
@@ -473,7 +446,7 @@ export async function resubmitPurchaseApplyTx(identity: ActingIdentity, input: {
       actor: identity,
       comment: "按驳回意见修改后重新提交",
     });
-    await notifyRoleTx(tx, APPROVAL_NODES[chain[0] as ApprovalNodeKey].roleKey, {
+    await notifyRoleTx(tx, "admin", {
       type: "approval_pending",
       title: `购买申请重新提交：${apply.title}`,
       content: `${identity.name ?? "申请人"} 重新提交了 ${apply.applyNo}，请审批`,
@@ -501,7 +474,7 @@ export async function submitApprovalActionTx(input: {
   if (apply.status !== "approving") throw new TRPCError({ code: "BAD_REQUEST", message: "该申请当前不在审批中" });
   const currentNode = apply.currentNode as ApprovalNodeKey | null;
   if (!currentNode) throw new TRPCError({ code: "BAD_REQUEST", message: "申请缺少当前节点" });
-  requireNodeActor({ user: input.identity, node: currentNode });
+  requireNodeActor({ user: input.identity });
 
   const chain = parseChain(apply.flowChain);
   const chainIndex = chain.indexOf(currentNode);
@@ -516,7 +489,7 @@ export async function submitApprovalActionTx(input: {
     return db.transaction(async tx => {
       if (backToNode) {
         await tx.update(table).set({ currentNode: backToNode, nodeEnteredAt: new Date() }).where(eq(table.id, apply.id));
-        await notifyRoleTx(tx, APPROVAL_NODES[backToNode].roleKey, {
+        await notifyRoleTx(tx, "admin", {
           type: "approval_pending",
           title: `申请被驳回重审：${apply.title}`,
           content: `${input.identity.name ?? ""} 驳回至「${APPROVAL_NODES[backToNode].nameZh}」：${input.comment}`,
@@ -552,18 +525,11 @@ export async function submitApprovalActionTx(input: {
   }
 
   // approve
-  if (currentNode === "purchaser") {
-    const quotationRows = await db.select({ id: quotations.id }).from(quotations).where(eq(quotations.applyId, apply.id));
-    if (!isQuotationComplete(quotationRows.length)) {
-      throw new TRPCError({ code: "CONFLICT", message: `采购硬性规则：至少 ${QUOTATION_MIN_COUNT} 家比价齐全后才可通过采购确认（当前 ${quotationRows.length} 家）` });
-    }
-  }
-
   return db.transaction(async tx => {
     const next = chain[chainIndex + 1];
     if (next) {
       await tx.update(table).set({ currentNode: next, nodeEnteredAt: new Date() }).where(eq(table.id, apply.id));
-      await notifyRoleTx(tx, APPROVAL_NODES[next].roleKey, {
+      await notifyRoleTx(tx, "admin", {
         type: "approval_pending",
         title: `申请待审批：${apply.title}`,
         content: `${input.identity.name ?? ""} 已通过「${nodeMeta.nameZh}」，等待「${APPROVAL_NODES[next].nameZh}」处理`,
@@ -606,15 +572,15 @@ export async function urgeApplyTx(applyType: "change" | "purchase", id: number, 
   const apply = rows[0];
   if (!apply) throw new TRPCError({ code: "NOT_FOUND", message: "申请不存在" });
   if (apply.status !== "approving") throw new TRPCError({ code: "BAD_REQUEST", message: "仅审批中的申请可催办" });
-  if (identity.id !== apply.submitterId && !["equipment_admin", "system_admin"].includes(identity.roleKey)) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "仅申请人或设备/系统管理员可催办" });
+  if (identity.id !== apply.submitterId && identity.roleKey !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "仅申请人本人或管理人员可催办" });
   }
   const currentNode = apply.currentNode as ApprovalNodeKey | null;
   if (!currentNode) throw new TRPCError({ code: "BAD_REQUEST", message: "申请缺少当前节点" });
 
   return db.transaction(async tx => {
     await recordTx(tx, { applyType, applyId: id, nodeKey: currentNode, nodeName: APPROVAL_NODES[currentNode].nameZh, action: "urge", actor: identity });
-    await notifyRoleTx(tx, APPROVAL_NODES[currentNode].roleKey, {
+    await notifyRoleTx(tx, "admin", {
       type: "approval_urge",
       title: `催办提醒：${apply.title}`,
       content: `${identity.name ?? "申请人"} 催办了 ${apply.applyNo}，当前停留在「${APPROVAL_NODES[currentNode].nameZh}」`,
@@ -625,13 +591,12 @@ export async function urgeApplyTx(applyType: "change" | "purchase", id: number, 
 
 /* ---------------- 执行推进 ---------------- */
 
-const EXECUTOR_ROLES: ApplyRoleKey[] = ["engineer", "equipment_admin", "system_admin"];
-
+/** 执行推进、采购执行、验收等管理动作统一要求管理人员身份 */
 export async function pushProgressTx(input: { applyType: "change" | "purchase"; id: number; identity: ActingIdentity; note: string }) {
   const db = await getDb();
   if (!db) throw new Error("数据库连接不可用");
   if (!input.note.trim()) throw new TRPCError({ code: "BAD_REQUEST", message: "请填写执行进度说明" });
-  requireRole(input.identity, EXECUTOR_ROLES);
+  requireAdmin(input.identity);
   const table = input.applyType === "change" ? changeApplies : purchaseApplies;
   const rows = await db.select().from(table).where(eq(table.id, input.id)).limit(1);
   const apply = rows[0];
@@ -660,7 +625,7 @@ export async function pushProgressTx(input: { applyType: "change" | "purchase"; 
 export async function updatePurchaserStageTx(input: { id: number; identity: ActingIdentity; stage: "quoting" | "quoted" | "ordered" | "shipping" | "arrived" }) {
   const db = await getDb();
   if (!db) throw new Error("数据库连接不可用");
-  requireRole(input.identity, ["purchaser", "equipment_admin", "system_admin"]);
+  requireAdmin(input.identity);
   const rows = await db.select().from(purchaseApplies).where(eq(purchaseApplies.id, input.id)).limit(1);
   const apply = rows[0];
   if (!apply) throw new TRPCError({ code: "NOT_FOUND", message: "申请不存在" });
@@ -682,8 +647,7 @@ export async function updatePurchaserStageTx(input: { id: number; identity: Acti
 export async function submitForAcceptanceTx(applyType: "change" | "purchase", id: number, identity: ActingIdentity) {
   const db = await getDb();
   if (!db) throw new Error("数据库连接不可用");
-  const allowed = applyType === "purchase" ? [...EXECUTOR_ROLES, "purchaser" as ApplyRoleKey] : EXECUTOR_ROLES;
-  requireRole(identity, allowed);
+  requireAdmin(identity);
   const table = applyType === "change" ? changeApplies : purchaseApplies;
   const rows = await db.select().from(table).where(eq(table.id, id)).limit(1);
   const apply = rows[0];
@@ -691,6 +655,10 @@ export async function submitForAcceptanceTx(applyType: "change" | "purchase", id
   if (apply.status !== "executing") throw new TRPCError({ code: "BAD_REQUEST", message: "仅执行中的申请可提交验收" });
   if (applyType === "purchase") {
     const purchase = apply as typeof purchaseApplies.$inferSelect;
+    const quotationRows = await db.select({ id: quotations.id }).from(quotations).where(eq(quotations.applyId, apply.id));
+    if (!isQuotationComplete(quotationRows.length)) {
+      throw new TRPCError({ code: "CONFLICT", message: `采购硬性规则：至少 ${QUOTATION_MIN_COUNT} 家比价齐全后才可提交验收（当前 ${quotationRows.length} 家）` });
+    }
     if (!purchase.selectedQuotationId) {
       throw new TRPCError({ code: "BAD_REQUEST", message: "请先选定中标报价，再提交验收" });
     }
@@ -732,7 +700,7 @@ export async function submitAcceptanceTx(input: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("数据库连接不可用");
-  requireRole(input.identity, ["equipment_admin", "engineer", "manager", "system_admin"]);
+  requireAdmin(input.identity);
   const table = input.applyType === "change" ? changeApplies : purchaseApplies;
   const rows = await db.select().from(table).where(eq(table.id, input.id)).limit(1);
   const apply = rows[0];
@@ -968,12 +936,12 @@ export async function addQuotationTx(identity: ActingIdentity, input: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("数据库连接不可用");
-  requireRole(identity, ["purchaser", "equipment_admin", "engineer", "system_admin"]);
+  requireAdmin(identity);
   const rows = await db.select().from(purchaseApplies).where(eq(purchaseApplies.id, input.applyId)).limit(1);
   const apply = rows[0];
   if (!apply) throw new TRPCError({ code: "NOT_FOUND", message: "申请不存在" });
-  const quoting = (apply.status === "approving" && apply.currentNode === "purchaser") || apply.status === "executing";
-  if (!quoting) throw new TRPCError({ code: "BAD_REQUEST", message: "当前阶段不允许录入报价（采购确认节点或执行阶段可录）" });
+  const quoting = apply.status === "approving" || apply.status === "executing";
+  if (!quoting) throw new TRPCError({ code: "BAD_REQUEST", message: "当前阶段不允许录入报价（审批中或执行阶段可录）" });
   if (!(input.amount > 0)) throw new TRPCError({ code: "BAD_REQUEST", message: "报价金额必须大于 0" });
 
   return db.transaction(async tx => {
@@ -996,7 +964,7 @@ export async function addQuotationTx(identity: ActingIdentity, input: {
 export async function removeQuotationTx(identity: ActingIdentity, quotationId: number) {
   const db = await getDb();
   if (!db) throw new Error("数据库连接不可用");
-  requireRole(identity, ["purchaser", "equipment_admin", "system_admin"]);
+  requireAdmin(identity);
   const rows = await db.select().from(quotations).where(eq(quotations.id, quotationId)).limit(1);
   const quotation = rows[0];
   if (!quotation) throw new TRPCError({ code: "NOT_FOUND", message: "报价不存在" });
@@ -1007,7 +975,7 @@ export async function removeQuotationTx(identity: ActingIdentity, quotationId: n
 export async function selectQuotationTx(identity: ActingIdentity, input: { applyId: number; quotationId: number }) {
   const db = await getDb();
   if (!db) throw new Error("数据库连接不可用");
-  requireRole(identity, ["purchaser", "equipment_admin", "system_admin"]);
+  requireAdmin(identity);
   const rows = await db.select().from(quotations).where(and(eq(quotations.id, input.quotationId), eq(quotations.applyId, input.applyId))).limit(1);
   const quotation = rows[0];
   if (!quotation) throw new TRPCError({ code: "NOT_FOUND", message: "报价不存在" });
@@ -1038,61 +1006,5 @@ export async function selectQuotationTx(identity: ActingIdentity, input: { apply
 
 /* ---------------- 配置 ---------------- */
 
-export async function updateThresholdsTx(identity: ActingIdentity, values: Partial<Thresholds>) {
-  requireRole(identity, ["system_admin"]);
-  const db = await getDb();
-  if (!db) throw new Error("数据库连接不可用");
-  const entries = Object.entries(values).filter(([key, value]) => key in THRESHOLD_META && Number.isFinite(value) && Number(value) >= 0) as [ThresholdKey, number][];
-  if (!entries.length) throw new TRPCError({ code: "BAD_REQUEST", message: "没有可更新的阈值" });
-  return db.transaction(async tx => {
-    for (const [key, value] of entries) {
-      await tx
-        .insert(applySettings)
-        .values({ settingKey: key, settingValue: String(value), label: THRESHOLD_META[key].labelZh, unit: "万元" })
-        .onDuplicateKeyUpdate({ set: { settingValue: String(value) } });
-    }
-  });
-}
+/** 两类角色权限模型下审批流固定为单节点「管理员审批」，不再提供阈值与流程链配置 */
 
-const CHANGE_FIRST_NODE: ApprovalNodeKey = "admin_review";
-const PURCHASE_FIRST_NODE: ApprovalNodeKey = "bu_owner";
-
-export async function updateFlowChainTx(identity: ActingIdentity, input: { flowKey: "CHANGE" | "PURCHASE"; chain: ApprovalNodeKey[] }) {
-  requireRole(identity, ["system_admin"]);
-  const db = await getDb();
-  if (!db) throw new Error("数据库连接不可用");
-  if (!input.chain.length) throw new TRPCError({ code: "BAD_REQUEST", message: "审批链不能为空" });
-  const invalid = input.chain.filter(key => !(key in APPROVAL_NODES));
-  if (invalid.length) throw new TRPCError({ code: "BAD_REQUEST", message: `包含非法节点：${invalid.join(", ")}` });
-
-  const firstNode = input.flowKey === "CHANGE" ? CHANGE_FIRST_NODE : PURCHASE_FIRST_NODE;
-  if (input.chain[0] !== firstNode) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: `${input.flowKey === "CHANGE" ? "修改" : "购买"}申请链首节点必须是「${APPROVAL_NODES[firstNode].nameZh}」` });
-  }
-  const forbidden = input.chain.filter(key => (input.flowKey === "CHANGE" ? key === "purchaser" : key === "manager_lite" || key === "admin_review"));
-  if (forbidden.length) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: `${input.flowKey === "CHANGE" ? "修改申请链不允许包含采购确认节点" : "购买申请链不允许包含初审/主管直批节点"}` });
-  }
-
-  return db.transaction(async tx => {
-    const existing = await tx.select({ id: approvalFlowDefs.id }).from(approvalFlowDefs).where(eq(approvalFlowDefs.flowKey, input.flowKey)).limit(1);
-    if (existing.length) {
-      await tx.update(approvalFlowDefs).set({ chainJson: serializeChain(input.chain) }).where(eq(approvalFlowDefs.id, existing[0].id));
-    } else {
-      await tx.insert(approvalFlowDefs).values({
-        flowKey: input.flowKey,
-        flowName: input.flowKey === "CHANGE" ? "设备修改申请审批流" : "设备购买申请审批流",
-        chainJson: serializeChain(input.chain),
-        description: "由系统管理员在审批配置页维护；新提交的申请按此链流转",
-      });
-    }
-    await operationLogTx(tx, {
-      module: "审批配置",
-      action: "更新审批链",
-      targetType: "approval_flow_def",
-      targetId: input.flowKey,
-      detail: input.chain.join(" → "),
-      userId: identity.id,
-    });
-  });
-}

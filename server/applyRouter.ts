@@ -2,14 +2,13 @@
  * 申请域 tRPC 路由：设备修改申请（CHG）/ 购买申请（PUR）/ 审批中心 / 执行验收 / 比价 / 配置 / 通知 / 履历。
  * 鉴权基于 ctx.actingUser（X-Acting-User-Id 头解析的申请域身份）。
  */
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { getDb } from "./db";
 import { publicProcedure, router } from "./_core/trpc";
 import {
   acceptanceRecords,
-  applySettings,
   approvalFlowDefs,
   approvalRecords,
   applyUsers,
@@ -21,27 +20,19 @@ import {
   quotations,
 } from "../drizzle/schema";
 import {
-  APPLY_ROLE_KEYS,
   CHANGE_TYPES,
   PURCHASE_BUY_TYPES,
-  THRESHOLD_META,
   URGENCY_LEVELS,
   APPLY_STATUSES,
-  APPROVAL_NODES,
 } from "../shared/apply";
-import type { ApprovalNodeKey, ApplyRoleKey } from "../shared/apply";
+import type { ApplyRoleKey } from "../shared/apply";
 import { isNodeOverdue, isNodeWarning, parseChain } from "./applyEngine";
 import { requireIdentity } from "./applyAuthorization";
 import * as persistence from "./applyPersistence";
 
 const acting = ({ ctx }: { ctx: { actingUser: null | { id: number; name: string | null; roleKey: ApplyRoleKey } } }) => requireIdentity(ctx.actingUser);
 
-const nodeKeyEnum = z.enum(["admin_review", "engineer_review", "manager_lite", "manager", "bu_owner", "gm", "purchaser"]);
-
-/** 身份在哪些审批节点有操作权 */
-function nodesForRole(roleKey: ApplyRoleKey): ApprovalNodeKey[] {
-  return (Object.keys(APPROVAL_NODES) as ApprovalNodeKey[]).filter(key => APPROVAL_NODES[key].roleKey === roleKey);
-}
+const nodeKeyEnum = z.enum(["admin_approve"]);
 
 async function decoratePendingRows<T extends { status: string; urgency: string; nodeEnteredAt: Date }>(rows: T[]) {
   const now = new Date();
@@ -275,8 +266,8 @@ export const applyRouter = router({
       const db = await getDb();
       if (!db) return [];
       const identity = requireIdentity(ctx.actingUser);
-      const nodes = nodesForRole(identity.roleKey);
-      if (!nodes.length) return [];
+      // 两类角色权限模型：管理人员可见并审批全部待审单据
+      if (identity.roleKey !== "admin") return [];
       const [changeRows, purchaseRows] = await Promise.all([
         db
           .select({
@@ -296,7 +287,7 @@ export const applyRouter = router({
           })
           .from(changeApplies)
           .leftJoin(equipment, eq(changeApplies.equipmentId, equipment.id))
-          .where(and(eq(changeApplies.status, "approving"), inArray(changeApplies.currentNode, nodes))),
+          .where(eq(changeApplies.status, "approving")),
         db
           .select({
             applyType: sql<"purchase">`'purchase'`,
@@ -314,7 +305,7 @@ export const applyRouter = router({
             nodeEnteredAt: purchaseApplies.nodeEnteredAt,
           })
           .from(purchaseApplies)
-          .where(and(eq(purchaseApplies.status, "approving"), inArray(purchaseApplies.currentNode, nodes))),
+          .where(eq(purchaseApplies.status, "approving")),
       ]);
       const merged = [...changeRows, ...purchaseRows];
       const decorated = (await decoratePendingRows(merged as never)) as unknown as Array<(typeof merged)[number] & { overdue: boolean; warning: boolean }>;
@@ -389,42 +380,20 @@ export const applyRouter = router({
       ),
   }),
 
-  /* ---------- 审批配置 ---------- */
+  /* ---------- 审批配置（两类角色权限模型：仅用户启用管理） ---------- */
   settings: router({
     overview: publicProcedure.query(async () => {
       const db = await getDb();
-      const rows = db ? await db.select().from(applySettings) : [];
-      const thresholds = { CHG_L1: THRESHOLD_META.CHG_L1.default, CHG_L2: THRESHOLD_META.CHG_L2.default, CHG_GM: THRESHOLD_META.CHG_GM.default };
-      for (const row of rows) {
-        if (row.settingKey in thresholds) {
-          const value = Number(row.settingValue);
-          if (Number.isFinite(value) && value >= 0) thresholds[row.settingKey as keyof typeof thresholds] = value;
-        }
-      }
-      const flowDefs = db ? await db.select().from(approvalFlowDefs) : [];
       const users = db ? await db.select().from(applyUsers).orderBy(applyUsers.id) : [];
-      return { thresholds, flowDefs, users };
+      const flowDefs = db ? await db.select().from(approvalFlowDefs) : [];
+      return { users, flowDefs };
     }),
-    updateThresholds: publicProcedure
-      .input(
-        z.object({
-          values: z.object({
-            CHG_L1: z.number().min(0).optional(),
-            CHG_L2: z.number().min(0).optional(),
-            CHG_GM: z.number().min(0).optional(),
-          }),
-        })
-      )
-      .mutation(({ ctx, input }) => persistence.updateThresholdsTx(acting({ ctx }), input.values)),
-    updateFlowChain: publicProcedure
-      .input(z.object({ flowKey: z.enum(["CHANGE", "PURCHASE"]), chain: z.array(nodeKeyEnum).min(1).max(8) }))
-      .mutation(({ ctx, input }) => persistence.updateFlowChainTx(acting({ ctx }), input)),
     toggleUser: publicProcedure
       .input(z.object({ id: z.number().int().positive(), isActive: z.boolean() }))
       .mutation(async ({ ctx, input }) => {
         requireIdentity(ctx.actingUser);
-        if (ctx.actingUser!.roleKey !== "system_admin") {
-          throw new TRPCError({ code: "FORBIDDEN", message: "仅系统管理员可调整申请用户状态" });
+        if (ctx.actingUser!.roleKey !== "admin") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "仅管理人员可调整申请用户状态" });
         }
         const db = await getDb();
         if (!db) throw new Error("数据库连接不可用");

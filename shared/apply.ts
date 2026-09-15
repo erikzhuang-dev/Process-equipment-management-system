@@ -3,19 +3,13 @@
  * 纯数据与纯类型，禁止引入 Node / DOM 依赖，保证两端可用。
  */
 
-/* ---------- 角色 ---------- */
-export const APPLY_ROLE_KEYS = ["applicant", "equipment_admin", "engineer", "manager", "bu_owner", "gm", "purchaser", "system_admin"] as const;
+/* ---------- 角色（两类：普通人员 / 管理人员） ---------- */
+export const APPLY_ROLE_KEYS = ["user", "admin"] as const;
 export type ApplyRoleKey = (typeof APPLY_ROLE_KEYS)[number];
 
 export const APPLY_ROLE_META: Record<ApplyRoleKey, { nameZh: string; nameEn: string }> = {
-  applicant: { nameZh: "申请人", nameEn: "Applicant" },
-  equipment_admin: { nameZh: "设备管理员", nameEn: "Equipment Admin" },
-  engineer: { nameZh: "设备工程师", nameEn: "Equipment Engineer" },
-  manager: { nameZh: "设备主管/经理", nameEn: "Manager" },
-  bu_owner: { nameZh: "负责人", nameEn: "Owner" },
-  gm: { nameZh: "总经理", nameEn: "General Manager" },
-  purchaser: { nameZh: "采购主管", nameEn: "Purchasing" },
-  system_admin: { nameZh: "系统管理员", nameEn: "System Admin" },
+  user: { nameZh: "普通人员", nameEn: "Member" },
+  admin: { nameZh: "管理人员", nameEn: "Administrator" },
 };
 
 /* ---------- 修改申请类型 ---------- */
@@ -29,9 +23,6 @@ export const CHANGE_TYPE_META: Record<ChangeType, { nameZh: string; nameEn: stri
   transfer: { nameZh: "移装申请", nameEn: "Transfer", lockStatus: "stopped" },
   scrap: { nameZh: "报废申请", nameEn: "Scrap", lockStatus: "stopped" },
 };
-
-/** 重型变更类型：无论金额均走完整审批链 */
-export const HEAVY_CHANGE_TYPES: readonly ChangeType[] = ["retrofit", "transfer", "scrap"];
 
 /* ---------- 购买申请类型 ---------- */
 export const PURCHASE_BUY_TYPES = ["new_purchase", "replace", "capacity_expansion"] as const;
@@ -71,8 +62,8 @@ export const APPLY_STATUS_META: Record<ApplyStatus, { nameZh: string; nameEn: st
 /** 主状态在进度条中的顺序（进度展示用） */
 export const APPLY_STATUS_FLOW: readonly ApplyStatus[] = ["submitted", "approving", "approved", "executing", "pending_acceptance", "closed"];
 
-/* ---------- 审批节点 ---------- */
-export type ApprovalNodeKey = "admin_review" | "engineer_review" | "manager_lite" | "manager" | "bu_owner" | "gm" | "purchaser";
+/* ---------- 审批节点（单节点：管理人员审批） ---------- */
+export type ApprovalNodeKey = "admin_approve";
 
 export interface ApprovalNodeMeta {
   roleKey: ApplyRoleKey;
@@ -81,26 +72,8 @@ export interface ApprovalNodeMeta {
 }
 
 export const APPROVAL_NODES: Record<ApprovalNodeKey, ApprovalNodeMeta> = {
-  admin_review: { roleKey: "equipment_admin", nameZh: "设备管理员初审", nameEn: "Admin Review" },
-  engineer_review: { roleKey: "engineer", nameZh: "工程师评审", nameEn: "Engineering Review" },
-  manager_lite: { roleKey: "manager", nameZh: "设备主管审批", nameEn: "Supervisor Approval" },
-  manager: { roleKey: "manager", nameZh: "设备经理审批", nameEn: "Manager Approval" },
-  bu_owner: { roleKey: "bu_owner", nameZh: "负责人审批", nameEn: "Owner Approval" },
-  gm: { roleKey: "gm", nameZh: "总经理审批", nameEn: "GM Approval" },
-  purchaser: { roleKey: "purchaser", nameZh: "采购主管确认", nameEn: "Purchasing Confirmation" },
+  admin_approve: { roleKey: "admin", nameZh: "管理员审批", nameEn: "Admin Approval" },
 };
-
-/* ---------- 阈值配置 ---------- */
-export const THRESHOLD_KEYS = ["CHG_L1", "CHG_L2", "CHG_GM"] as const;
-export type ThresholdKey = (typeof THRESHOLD_KEYS)[number];
-
-export const THRESHOLD_META: Record<ThresholdKey, { labelZh: string; labelEn: string; default: number }> = {
-  CHG_L1: { labelZh: "修改申请·小额直批线", labelEn: "CHG small-amount line", default: 5000 },
-  CHG_L2: { labelZh: "修改申请·分级审批线", labelEn: "CHG tiered line", default: 30000 },
-  CHG_GM: { labelZh: "修改申请·总经理加签线", labelEn: "CHG GM line", default: 100000 },
-};
-
-export type Thresholds = Record<ThresholdKey, number>;
 
 /* ---------- 比价规则 ---------- */
 export const QUOTATION_MIN_COUNT = 3;
@@ -121,27 +94,11 @@ export function formatApplyNo(prefix: "CHG" | "PUR", now: Date, seq: number): st
 }
 
 /* ---------- 审批链构建（前后端共用；提交时确定，重新提交时重算） ---------- */
-export function buildChangeChain(input: { changeType: ChangeType; estimatedFee: number; thresholds: Thresholds }): ApprovalNodeKey[] {
-  const { changeType, estimatedFee, thresholds } = input;
-  const fee = Number(estimatedFee) || 0;
-  const heavy = HEAVY_CHANGE_TYPES.includes(changeType);
-  if (heavy || fee >= thresholds.CHG_L2) {
-    const chain: ApprovalNodeKey[] = ["admin_review", "engineer_review", "manager", "bu_owner"];
-    if (changeType === "scrap" || fee >= thresholds.CHG_GM) chain.push("gm");
-    return chain;
-  }
-  if (fee >= thresholds.CHG_L1) return ["admin_review", "engineer_review", "manager"];
-  return ["admin_review", "manager_lite"];
+/** 两类角色权限模型：修改/购买申请均为单节点「管理员审批」，管理人员即可审批 */
+export function buildChangeChain(): ApprovalNodeKey[] {
+  return ["admin_approve"];
 }
 
 export function buildPurchaseChain(): ApprovalNodeKey[] {
-  // 购买申请固定一级审批链：负责人审批 → 工程师评审 → 采购主管确认（不再按预算分级加签）
-  return ["bu_owner", "engineer_review", "purchaser"];
+  return ["admin_approve"];
 }
-
-/** 默认金额阈值（与 seed 一致；运行时以 apply_settings 为准） */
-export const DEFAULT_THRESHOLDS: Record<"CHG_L1" | "CHG_L2" | "CHG_GM", number> = {
-  CHG_L1: 5000,
-  CHG_L2: 30000,
-  CHG_GM: 100000,
-};

@@ -7,19 +7,15 @@ import {
   APPROVAL_NODES,
   APPLY_STATUS_FLOW,
   CHANGE_TYPE_META,
-  HEAVY_CHANGE_TYPES,
   QUOTATION_MIN_COUNT,
-  THRESHOLD_META,
   slaHours,
-  type ApplyRoleKey,
   type ApplyStatus,
   type ApprovalNodeKey,
   type ChangeType,
-  type Thresholds,
   type Urgency,
 } from "../shared/apply";
 
-export { buildChangeChain, buildPurchaseChain, THRESHOLD_META, QUOTATION_MIN_COUNT, APPROVAL_NODES, slaHours } from "../shared/apply";
+export { buildChangeChain, buildPurchaseChain, QUOTATION_MIN_COUNT, APPROVAL_NODES, slaHours } from "../shared/apply";
 
 /** 单据编号：CHG-20250101-001 / PUR-20250101-001 */
 export function formatApplyNo(prefix: "CHG" | "PUR", date: Date, seq: number): string {
@@ -29,11 +25,6 @@ export function formatApplyNo(prefix: "CHG" | "PUR", date: Date, seq: number): s
   return `${prefix}-${y}${m}${d}-${String(seq).padStart(3, "0")}`;
 }
 
-export { DEFAULT_THRESHOLDS } from "../shared/apply";
-
-/**
- * 购买申请审批链（固定一级）：负责人审批 → 工程师评审（选型）→ 采购主管（比价确认）
- */
 /** 链序列化 / 反序列化（存库为 JSON 文本） */
 export function serializeChain(chain: ApprovalNodeKey[]): string {
   return JSON.stringify(chain);
@@ -50,12 +41,7 @@ export function parseChain(raw: string | null | undefined): ApprovalNodeKey[] {
   }
 }
 
-/** 节点准入角色 */
-export function nodeRoleKey(node: ApprovalNodeKey): ApplyRoleKey {
-  return APPROVAL_NODES[node].roleKey;
-}
-
-/** 比价硬拦截：采购主管节点通过前必须已有 ≥3 家报价 */
+/** 比价硬拦截：购买申请提交验收前必须已有 ≥3 家报价 */
 export function isQuotationComplete(quotationCount: number): boolean {
   return Number(quotationCount) >= QUOTATION_MIN_COUNT;
 }
@@ -103,9 +89,4 @@ export function restoredStatusFor(changeType: ChangeType): "running" | "scrapped
 /** 申请锁定设备状态（创建单据时写入） */
 export function lockStatusFor(changeType: ChangeType) {
   return CHANGE_TYPE_META[changeType].lockStatus;
-}
-
-/** 阈值键 → 单位 */
-export function thresholdUnit(key: keyof Thresholds): string {
-  return key.startsWith("CHG") ? "万元" : "万元";
 }

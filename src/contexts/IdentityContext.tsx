@@ -57,7 +57,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       const id = Number(raw);
       if (Number.isFinite(id)) {
         // 先标记占位，users 加载后回填完整身份
-        setCurrentState({ id, name: "", roleKey: "applicant" });
+        setCurrentState({ id, name: "", roleKey: "user" });
       }
     }
     setHydrated(true);
@@ -69,8 +69,8 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     setCurrentState(prev => {
       const match = prev ? users.find(user => user.id === prev.id) : undefined;
       if (match) return { id: match.id, name: match.name, roleKey: match.roleKey };
-      // 未选身份时默认以"设备管理员"进入（公共工作站演示形态）
-      const admin = users.find(user => user.roleKey === "equipment_admin") ?? users[0];
+      // 未选身份时默认以"管理人员"进入（公共工作站演示形态）
+      const admin = users.find(user => user.roleKey === "admin") ?? users[0];
       return { id: admin.id, name: admin.name, roleKey: admin.roleKey };
     });
   }, [usersQuery.data]);
@@ -90,7 +90,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       users: (usersQuery.data ?? []).map(user => ({ id: user.id, name: user.name, roleKey: user.roleKey })),
       setCurrent,
       isLoading: usersQuery.isLoading || !hydrated,
-      canApprove: current ? ["equipment_admin", "engineer", "manager", "bu_owner", "gm", "purchaser"].includes(current.roleKey) : false,
+      canApprove: current?.roleKey === "admin",
     }),
     [current, usersQuery.data, usersQuery.isLoading, setCurrent, hydrated]
   );

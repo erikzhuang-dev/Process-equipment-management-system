@@ -256,7 +256,7 @@ export const applyUsers = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     name: varchar("name", { length: 120 }).notNull(),
-    roleKey: mysqlEnum("roleKey", ["applicant", "equipment_admin", "engineer", "manager", "bu_owner", "gm", "purchaser", "system_admin"]).notNull(),
+    roleKey: mysqlEnum("roleKey", ["user", "admin"]).notNull(),
     buId: int("buId"),
     email: varchar("email", { length: 160 }),
     isActive: boolean("isActive").default(true).notNull(),

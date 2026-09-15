@@ -6,60 +6,22 @@ import {
   isQuotationComplete,
   slaHours,
 } from "./applyEngine";
-import { DEFAULT_THRESHOLDS } from "../shared/apply";
 
-const T = DEFAULT_THRESHOLDS;
-
-describe("buildChangeChain 金额分链", () => {
-  it("小额维修走轻量链（初审 + 设备主管）", () => {
-    expect(buildChangeChain({ changeType: "repair", estimatedFee: 3000, thresholds: T })).toEqual([
-      "admin_review",
-      "manager_lite",
-    ]);
-  });
-
-  it("中额维修进入工程师评审 + 设备经理", () => {
-    expect(buildChangeChain({ changeType: "repair", estimatedFee: 12000, thresholds: T })).toEqual([
-      "admin_review",
-      "engineer_review",
-      "manager",
-    ]);
-  });
-
-  it("大额改造需 BU 负责人加签", () => {
-    expect(buildChangeChain({ changeType: "retrofit", estimatedFee: 60000, thresholds: T })).toEqual([
-      "admin_review",
-      "engineer_review",
-      "manager",
-      "bu_owner",
-    ]);
-  });
-
-  it("报废单必加总经理，与金额无关", () => {
-    expect(buildChangeChain({ changeType: "scrap", estimatedFee: 800, thresholds: T })).toEqual([
-      "admin_review",
-      "engineer_review",
-      "manager",
-      "bu_owner",
-      "gm",
-    ]);
-  });
-
-  it("金额达到 CHG_GM 加签总经理", () => {
-    expect(buildChangeChain({ changeType: "repair", estimatedFee: 150000, thresholds: T }).at(-1)).toBe("gm");
+describe("buildChangeChain 两类权限统一审批", () => {
+  it("修改申请统一单节点（管理员审批），与金额/类型无关", () => {
+    expect(buildChangeChain()).toEqual(["admin_approve"]);
   });
 
   it("链内每个节点的角色映射存在", () => {
-    const chain = buildChangeChain({ changeType: "transfer", estimatedFee: 200000, thresholds: T });
-    for (const node of chain) {
+    for (const node of buildChangeChain()) {
       expect(APPROVAL_NODES[node].roleKey).toBeTruthy();
     }
   });
 });
 
 describe("buildPurchaseChain", () => {
-  it("固定一级审批链（不分金额）", () => {
-    expect(buildPurchaseChain()).toEqual(["bu_owner", "engineer_review", "purchaser"]);
+  it("购买申请统一单节点（管理员审批）", () => {
+    expect(buildPurchaseChain()).toEqual(["admin_approve"]);
   });
 });
 

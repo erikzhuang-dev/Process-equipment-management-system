@@ -1,0 +1,1 @@
+ALTER TABLE `apply_users` MODIFY COLUMN `roleKey` enum('user','admin') NOT NULL;

@@ -1,9 +1,8 @@
 /**
- * 申请域鉴权断言：基于 apply_users 角色与单据节点判断操作资格。
+ * 申请域鉴权断言：基于 apply_users 两类角色（user 普通人员 / admin 管理人员）判断操作资格。
  */
 import { TRPCError } from "@trpc/server";
-import { nodeRoleKey } from "./applyEngine";
-import type { ApplyRoleKey, ApprovalNodeKey } from "../shared/apply";
+import type { ApplyRoleKey } from "../shared/apply";
 
 export interface ActingIdentity {
   id: number;
@@ -26,24 +25,21 @@ export function requireRole(user: ActingIdentity | null | undefined, roles: read
   return identity;
 }
 
-/** 节点审批资格：角色匹配即可（设备主管/经理共用 manager 角色键） */
-export function requireNodeActor(input: {
-  user: ActingIdentity | null | undefined;
-  node: ApprovalNodeKey;
-}): ActingIdentity {
-  const identity = requireIdentity(input.user);
-  const required = nodeRoleKey(input.node);
-  if (identity.roleKey !== required) {
-    throw new TRPCError({ code: "FORBIDDEN", message: `该节点需要「${required}」身份审批，当前为「${identity.roleKey}」` });
-  }
-  return identity;
+/** 管理人员身份断言（审批、执行推进、验收等管理动作） */
+export function requireAdmin(user: ActingIdentity | null | undefined): ActingIdentity {
+  return requireRole(user, ["admin"]);
 }
 
-/** 申请人本人或系统管理员可撤回 */
+/** 审批资格：管理人员即可审批（两类角色权限模型） */
+export function requireNodeActor(input: { user: ActingIdentity | null | undefined }): ActingIdentity {
+  return requireAdmin(input.user);
+}
+
+/** 申请人本人或管理人员可撤回 */
 export function requireOwnerOrAdmin(input: { user: ActingIdentity | null | undefined; submitterId: number }): ActingIdentity {
   const identity = requireIdentity(input.user);
-  if (identity.id !== input.submitterId && identity.roleKey !== "system_admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "仅申请人本人或系统管理员可撤回该申请" });
+  if (identity.id !== input.submitterId && identity.roleKey !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN", message: "仅申请人本人或管理人员可撤回该申请" });
   }
   return identity;
 }

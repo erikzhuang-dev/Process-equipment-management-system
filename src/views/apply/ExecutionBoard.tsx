@@ -23,7 +23,7 @@ const zh = {
   filter: "仅看修改申请",
   refresh: "刷新",
   all: "全部",
-  hint: "请先在左下角选择身份（设备工程师 / 设备管理员）以执行操作。",
+  hint: "请先在左下角选择身份（管理人员）以执行操作。",
   goMine: "前往我的申请",
 };
 
@@ -38,7 +38,7 @@ const en: Record<keyof typeof zh, string> = {
   filter: "Change requests only",
   refresh: "Refresh",
   all: "All",
-  hint: "Pick an identity (engineer / equipment admin) at the sidebar footer first.",
+  hint: "Pick an identity (administrator) at the sidebar footer first.",
   goMine: "Go to my requests",
 };
 

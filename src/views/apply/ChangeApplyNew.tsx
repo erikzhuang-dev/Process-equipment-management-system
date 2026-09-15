@@ -15,7 +15,7 @@ import { useIdentity } from "@/contexts/IdentityContext";
 import { uploadImageFile } from "@/lib/uploadImage";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { buildChangeChain, CHANGE_TYPE_META, CHANGE_TYPES, DEFAULT_THRESHOLDS, THRESHOLD_META, APPROVAL_NODES, type ChangeType, type Urgency } from "@shared/apply";
+import { buildChangeChain, CHANGE_TYPE_META, CHANGE_TYPES, APPROVAL_NODES, type ChangeType, type Urgency } from "@shared/apply";
 import { NodeChainProgress, EQUIPMENT_STATUS_ZH, formatFee } from "./applyUi";
 
 const STEP_TITLES = ["选择设备", "填写申请", "确认提交"];
@@ -65,7 +65,7 @@ export default function ChangeApplyNew() {
 
   const selected = useMemo(() => (equipmentList.data?.items ?? []).find(row => row.id === equipmentId) ?? null, [equipmentList.data, equipmentId]);
   const fee = Number(values.estimatedFee) || 0;
-  const chain = useMemo(() => buildChangeChain({ changeType: values.changeType, estimatedFee: fee, thresholds: DEFAULT_THRESHOLDS }), [values.changeType, fee]);
+  const chain = useMemo(() => buildChangeChain(), []);
 
   useEffect(() => {
     if (!values.title.trim() && selected) {
@@ -181,7 +181,6 @@ export default function ChangeApplyNew() {
               <button key={type} type="button" onClick={() => setValues(v => ({ ...v, changeType: type }))}
                 className={cn("rounded-xl border px-2 py-3 text-center text-sm transition-colors", values.changeType === type ? "border-[#4a7c59] bg-[#f0f7ec] font-semibold text-[#2c4433]" : "border-[#d9e5d6] bg-white text-[#4c6350] hover:border-[#b5c4b2]")}>
                 {CHANGE_TYPE_META[type].nameZh}
-                {type === "scrap" && <span className="mt-0.5 block text-[10px] text-rose-500">需总经理加签</span>}
               </button>
             ))}
           </div>
@@ -255,10 +254,10 @@ export default function ChangeApplyNew() {
             <p className="whitespace-pre-wrap rounded-lg bg-[#f3f8f0] px-3 py-2 text-xs text-[#4c6350]">{values.reason}</p>
           </CardContent></Card>
           <div>
-            <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-[#789079]"><FileText className="h-3.5 w-3.5" /> 提交后审批链（按费用 ¥{formatFee(fee)} 与类型自动生成）</p>
+            <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-[#789079]"><FileText className="h-3.5 w-3.5" /> 提交后审批流</p>
             <NodeChainProgress chain={chain} currentNode={chain[0]} status="approving" />
             <p className="mt-1.5 text-xs text-[#8aa28b]">
-              阈值：{THRESHOLD_META.CHG_L1.labelZh} ¥{formatFee(THRESHOLD_META.CHG_L1.default)} · {THRESHOLD_META.CHG_L2.labelZh} ¥{formatFee(THRESHOLD_META.CHG_L2.default)} · {THRESHOLD_META.CHG_GM.labelZh} ¥{formatFee(THRESHOLD_META.CHG_GM.default)}
+              提交后由管理人员统一审批，通过后进入执行阶段。
             </p>
           </div>
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">

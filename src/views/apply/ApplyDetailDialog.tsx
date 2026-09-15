@@ -131,13 +131,13 @@ export function ApplyDetailDialog({ applyType, applyId, open, onOpenChange, onCh
   }
 
   const identityId = current?.id ?? -1;
-  const roleKey = current?.roleKey ?? "applicant";
+  const roleKey = current?.roleKey ?? "user";
   const isSubmitter = apply.submitterId === identityId;
   const currentNode = apply.currentNode as ApprovalNodeKey | null;
-  const isCurrentNodeActor = Boolean(currentNode && APPROVAL_NODES[currentNode]?.roleKey === roleKey);
-  const canExecute = ["equipment_admin", "engineer", "manager", "system_admin"].includes(roleKey);
-  const canAccept = ["equipment_admin", "engineer", "manager", "system_admin"].includes(roleKey);
-  const canManageQuotes = ["purchaser", "equipment_admin", "engineer", "system_admin"].includes(roleKey);
+  const isCurrentNodeActor = roleKey === "admin" && Boolean(currentNode);
+  const canExecute = roleKey === "admin";
+  const canAccept = roleKey === "admin";
+  const canManageQuotes = roleKey === "admin";
   const nodeEnteredAt = new Date(apply.nodeEnteredAt);
   const overdueHours = Math.max(0, Math.floor((Date.now() - nodeEnteredAt.getTime()) / 3600_000));
 
@@ -230,7 +230,7 @@ export function ApplyDetailDialog({ applyType, applyId, open, onOpenChange, onCh
                   <p className="text-xs font-semibold tracking-wide text-[#789079]">
                     比价记录（需 ≥ {QUOTATION_MIN_COUNT} 家，当前 {purchaseDetail.data.quotations.length} 家）
                   </p>
-                  {canManageQuotes && (apply.status === "executing" || (apply.status === "approving" && currentNode === "purchaser")) && (
+                  {canManageQuotes && apply.status === "executing" && (
                     <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setQuoteFormOpen(value => !value)}>+ 添加报价</Button>
                   )}
                 </div>
@@ -337,9 +337,6 @@ export function ApplyDetailDialog({ applyType, applyId, open, onOpenChange, onCh
             <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50/60 p-3">
               <p className="text-xs font-semibold text-amber-800">
                 待我审批：{APPROVAL_NODES[currentNode].nameZh}
-                {currentNode === "purchaser" && purchaseDetail.data && purchaseDetail.data.quotations.length < QUOTATION_MIN_COUNT && (
-                  <span className="ml-2 inline-flex items-center text-rose-600"><AlertTriangle className="mr-1 h-3 w-3" />比价不足 {QUOTATION_MIN_COUNT} 家，通过将被拦截</span>
-                )}
               </p>
               <Textarea rows={2} placeholder="审批意见（驳回时必填）" value={comment} onChange={event => setComment(event.target.value)} className="min-h-0 bg-white" />
               <div className="flex flex-wrap items-center gap-2">
@@ -412,7 +409,7 @@ export function ApplyDetailDialog({ applyType, applyId, open, onOpenChange, onCh
                 <Undo2 className="mr-1 h-4 w-4" /> 撤回申请
               </Button>
             )}
-            {(isSubmitter || roleKey === "equipment_admin" || roleKey === "system_admin") && apply.status === "approving" && !isCurrentNodeActor && (
+            {(isSubmitter || roleKey === "admin") && apply.status === "approving" && !isCurrentNodeActor && (
               <Button size="sm" variant="ghost" className="text-amber-700 hover:bg-amber-50" disabled={urge.isPending} onClick={() => urge.mutate({ applyType, id: apply.id })}>
                 催办当前节点
               </Button>

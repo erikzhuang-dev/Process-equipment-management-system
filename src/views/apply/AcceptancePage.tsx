@@ -45,7 +45,7 @@ export default function AcceptancePage() {
 
       {!acting && (
         <p className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-          {t("请先在左下角选择身份（设备管理员 / 工程师 / 经理）再验收。", "Pick an identity first (admin / engineer / manager).")}
+          {t("请先在左下角选择身份（管理人员）再验收。", "Pick an identity first (administrator).")}
         </p>
       )}
 

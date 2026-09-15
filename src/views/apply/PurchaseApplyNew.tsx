@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { buildPurchaseChain, DEFAULT_THRESHOLDS, PURCHASE_BUY_TYPE_META, PURCHASE_BUY_TYPES, THRESHOLD_META, type PurchaseBuyType, type Urgency, APPROVAL_NODES } from "@shared/apply";
+import { buildPurchaseChain, PURCHASE_BUY_TYPE_META, PURCHASE_BUY_TYPES, type PurchaseBuyType, type Urgency, APPROVAL_NODES } from "@shared/apply";
 import { NodeChainProgress, formatFee } from "./applyUi";
 
 export default function PurchaseApplyNew() {
@@ -164,10 +164,10 @@ export default function PurchaseApplyNew() {
         {/* 实时链预览 */}
         <Card className="border-[#d9e5d6]">
           <CardContent className="p-4">
-            <p className="mb-2 flex items-center gap-1 text-xs font-semibold text-[#789079]"><FileText className="h-3.5 w-3.5" /> 提交后审批链（固定一级审批）</p>
+            <p className="mb-2 flex items-center gap-1 text-xs font-semibold text-[#789079]"><FileText className="h-3.5 w-3.5" /> 提交后审批流</p>
             <NodeChainProgress chain={chain} currentNode={chain[0]} status="approving" />
             <p className="mt-2 text-xs text-[#8aa28b]">
-              购买申请为固定一级审批：负责人审批 → 工程师评审 → 采购主管确认；采购主管节点须完成 ≥ 3 家比价方可通过。
+              购买申请由管理人员统一审批；执行阶段须录入并选定报价（≥ 3 家方可提交验收）。
             </p>
           </CardContent>
         </Card>
