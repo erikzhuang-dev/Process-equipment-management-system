@@ -48,7 +48,7 @@ export default function PurchaseApplyNew() {
   });
 
   const budget = Number(values.budget) || 0;
-  const chain = useMemo(() => buildPurchaseChain({ budget, thresholds: DEFAULT_THRESHOLDS }), [budget]);
+  const chain = useMemo(() => buildPurchaseChain(), []);
 
   const replaceMatch = useMemo(() => {
     const kw = values.replaceEquipmentCode.trim().toLowerCase();
@@ -164,11 +164,10 @@ export default function PurchaseApplyNew() {
         {/* 实时链预览 */}
         <Card className="border-[#d9e5d6]">
           <CardContent className="p-4">
-            <p className="mb-2 flex items-center gap-1 text-xs font-semibold text-[#789079]"><FileText className="h-3.5 w-3.5" /> 提交后审批链（按预算 ¥{formatFee(budget)} 自动生成）</p>
+            <p className="mb-2 flex items-center gap-1 text-xs font-semibold text-[#789079]"><FileText className="h-3.5 w-3.5" /> 提交后审批链（固定一级审批）</p>
             <NodeChainProgress chain={chain} currentNode={chain[0]} status="approving" />
             <p className="mt-2 text-xs text-[#8aa28b]">
-              阈值：{THRESHOLD_META.PUR_L1.labelZh} ¥{formatFee(THRESHOLD_META.PUR_L1.default)} · {THRESHOLD_META.PUR_L2.labelZh} ¥{formatFee(THRESHOLD_META.PUR_L2.default)}
-              ；采购主管节点须完成 ≥ 3 家比价方可通过。
+              购买申请为固定一级审批：负责人审批 → 工程师评审 → 采购主管确认；采购主管节点须完成 ≥ 3 家比价方可通过。
             </p>
           </CardContent>
         </Card>

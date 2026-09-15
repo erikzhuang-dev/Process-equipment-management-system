@@ -143,8 +143,6 @@ export async function getThresholds(): Promise<Thresholds> {
     CHG_L1: THRESHOLD_META.CHG_L1.default,
     CHG_L2: THRESHOLD_META.CHG_L2.default,
     CHG_GM: THRESHOLD_META.CHG_GM.default,
-    PUR_L1: THRESHOLD_META.PUR_L1.default,
-    PUR_L2: THRESHOLD_META.PUR_L2.default,
   };
   if (!db) return thresholds;
   const rows = await db.select().from(applySettings);
@@ -282,7 +280,7 @@ export async function createPurchaseApplyTx(identity: ActingIdentity, input: Cre
     throw new TRPCError({ code: "BAD_REQUEST", message: "替换购置必须选择被替换的现有设备" });
   }
   const thresholds = await getThresholds();
-  const chain = buildPurchaseChain({ budget: input.budget, thresholds });
+  const chain = buildPurchaseChain();
   const applyNo = await nextApplyNo("PUR");
   const expectedAt = input.expectedDate ? new Date(`${input.expectedDate}T00:00:00`) : null;
 
@@ -451,7 +449,7 @@ export async function resubmitPurchaseApplyTx(identity: ActingIdentity, input: {
 
   const budget = input.budget ?? Number(apply.budget);
   const thresholds = await getThresholds();
-  const chain = buildPurchaseChain({ budget, thresholds });
+  const chain = buildPurchaseChain();
 
   return db.transaction(async tx => {
     await tx

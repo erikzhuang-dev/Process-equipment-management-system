@@ -32,7 +32,7 @@ export function formatApplyNo(prefix: "CHG" | "PUR", date: Date, seq: number): s
 export { DEFAULT_THRESHOLDS } from "../shared/apply";
 
 /**
- * 购买申请审批链：BU 负责人 → 工程师评审（选型）→ 采购主管（比价确认）→（≥ PUR_L1）设备经理 →（≥ PUR_L2）总经理
+ * 购买申请审批链（固定一级）：负责人审批 → 工程师评审（选型）→ 采购主管（比价确认）
  */
 /** 链序列化 / 反序列化（存库为 JSON 文本） */
 export function serializeChain(chain: ApprovalNodeKey[]): string {

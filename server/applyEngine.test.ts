@@ -58,18 +58,8 @@ describe("buildChangeChain 金额分链", () => {
 });
 
 describe("buildPurchaseChain", () => {
-  it("小额购买走基础三节点", () => {
-    expect(buildPurchaseChain({ budget: 20000, thresholds: T })).toEqual(["bu_owner", "engineer_review", "purchaser"]);
-  });
-
-  it("大额购买追加设备经理与总经理", () => {
-    expect(buildPurchaseChain({ budget: 250000, thresholds: T })).toEqual([
-      "bu_owner",
-      "engineer_review",
-      "purchaser",
-      "manager",
-      "gm",
-    ]);
+  it("固定一级审批链（不分金额）", () => {
+    expect(buildPurchaseChain()).toEqual(["bu_owner", "engineer_review", "purchaser"]);
   });
 });
 

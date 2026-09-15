@@ -17,13 +17,11 @@ const THRESHOLD_FIELDS = [
   { key: "CHG_L1", zh: "修改申请·主管直批上限", en: "Change · supervisor direct-approval cap" },
   { key: "CHG_L2", zh: "修改申请·BU负责人加签下限", en: "Change · BU-owner escalation floor" },
   { key: "CHG_GM", zh: "修改申请·总经理加签下限", en: "Change · GM escalation floor" },
-  { key: "PUR_L1", zh: "购买申请·设备经理审批下限", en: "Purchase · manager approval floor" },
-  { key: "PUR_L2", zh: "购买申请·总经理审批下限", en: "Purchase · GM approval floor" },
 ] as const;
 
 const ROLE_ZH: Record<string, string> = {
   applicant: "申请人", equipment_admin: "设备管理员", engineer: "设备工程师", manager: "设备经理",
-  bu_owner: "BU 负责人", gm: "总经理", purchaser: "采购主管", system_admin: "系统管理员",
+  bu_owner: "负责人", gm: "总经理", purchaser: "采购主管", system_admin: "系统管理员",
 };
 const ROLE_EN: Record<string, string> = {
   applicant: "Applicant", equipment_admin: "Equipment Admin", engineer: "Engineer", manager: "Equipment Manager",

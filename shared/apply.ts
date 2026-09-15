@@ -12,7 +12,7 @@ export const APPLY_ROLE_META: Record<ApplyRoleKey, { nameZh: string; nameEn: str
   equipment_admin: { nameZh: "设备管理员", nameEn: "Equipment Admin" },
   engineer: { nameZh: "设备工程师", nameEn: "Equipment Engineer" },
   manager: { nameZh: "设备主管/经理", nameEn: "Manager" },
-  bu_owner: { nameZh: "BU 负责人", nameEn: "BU Owner" },
+  bu_owner: { nameZh: "负责人", nameEn: "Owner" },
   gm: { nameZh: "总经理", nameEn: "General Manager" },
   purchaser: { nameZh: "采购主管", nameEn: "Purchasing" },
   system_admin: { nameZh: "系统管理员", nameEn: "System Admin" },
@@ -85,21 +85,19 @@ export const APPROVAL_NODES: Record<ApprovalNodeKey, ApprovalNodeMeta> = {
   engineer_review: { roleKey: "engineer", nameZh: "工程师评审", nameEn: "Engineering Review" },
   manager_lite: { roleKey: "manager", nameZh: "设备主管审批", nameEn: "Supervisor Approval" },
   manager: { roleKey: "manager", nameZh: "设备经理审批", nameEn: "Manager Approval" },
-  bu_owner: { roleKey: "bu_owner", nameZh: "BU 负责人审批", nameEn: "BU Owner Approval" },
+  bu_owner: { roleKey: "bu_owner", nameZh: "负责人审批", nameEn: "Owner Approval" },
   gm: { roleKey: "gm", nameZh: "总经理审批", nameEn: "GM Approval" },
   purchaser: { roleKey: "purchaser", nameZh: "采购主管确认", nameEn: "Purchasing Confirmation" },
 };
 
 /* ---------- 阈值配置 ---------- */
-export const THRESHOLD_KEYS = ["CHG_L1", "CHG_L2", "CHG_GM", "PUR_L1", "PUR_L2"] as const;
+export const THRESHOLD_KEYS = ["CHG_L1", "CHG_L2", "CHG_GM"] as const;
 export type ThresholdKey = (typeof THRESHOLD_KEYS)[number];
 
 export const THRESHOLD_META: Record<ThresholdKey, { labelZh: string; labelEn: string; default: number }> = {
   CHG_L1: { labelZh: "修改申请·小额直批线", labelEn: "CHG small-amount line", default: 5000 },
   CHG_L2: { labelZh: "修改申请·分级审批线", labelEn: "CHG tiered line", default: 30000 },
   CHG_GM: { labelZh: "修改申请·总经理加签线", labelEn: "CHG GM line", default: 100000 },
-  PUR_L1: { labelZh: "购买申请·经理审批线", labelEn: "PUR manager line", default: 50000 },
-  PUR_L2: { labelZh: "购买申请·总经理审批线", labelEn: "PUR GM line", default: 200000 },
 };
 
 export type Thresholds = Record<ThresholdKey, number>;
@@ -136,19 +134,14 @@ export function buildChangeChain(input: { changeType: ChangeType; estimatedFee: 
   return ["admin_review", "manager_lite"];
 }
 
-export function buildPurchaseChain(input: { budget: number; thresholds: Thresholds }): ApprovalNodeKey[] {
-  const { budget, thresholds } = input;
-  const chain: ApprovalNodeKey[] = ["bu_owner", "engineer_review", "purchaser"];
-  if (budget >= thresholds.PUR_L1) chain.push("manager");
-  if (budget >= thresholds.PUR_L2) chain.push("gm");
-  return chain;
+export function buildPurchaseChain(): ApprovalNodeKey[] {
+  // 购买申请固定一级审批链：负责人审批 → 工程师评审 → 采购主管确认（不再按预算分级加签）
+  return ["bu_owner", "engineer_review", "purchaser"];
 }
 
 /** 默认金额阈值（与 seed 一致；运行时以 apply_settings 为准） */
-export const DEFAULT_THRESHOLDS: Record<"CHG_L1" | "CHG_L2" | "CHG_GM" | "PUR_L1" | "PUR_L2", number> = {
+export const DEFAULT_THRESHOLDS: Record<"CHG_L1" | "CHG_L2" | "CHG_GM", number> = {
   CHG_L1: 5000,
   CHG_L2: 30000,
   CHG_GM: 100000,
-  PUR_L1: 50000,
-  PUR_L2: 200000,
 };

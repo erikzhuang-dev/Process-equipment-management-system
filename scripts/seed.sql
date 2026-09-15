@@ -48,7 +48,7 @@ INSERT IGNORE INTO `apply_users` (`id`, `name`, `roleKey`, `buId`, `email`, `isA
 -- 审批流定义（链模板；实际链按金额/类型动态截断）
 INSERT IGNORE INTO `approval_flow_defs` (`flowKey`, `flowName`, `chainJson`, `description`) VALUES
 ('CHANGE', '设备修改申请', '["admin_review","engineer_review","manager","bu_owner","gm"]', '全链模板；实际按预估费用与类型截断（轻量链免工程师与BU负责人）'),
-('PURCHASE', '设备购买申请', '["bu_owner","engineer_review","purchaser","manager","gm"]', '全链模板；实际按预算截断；采购主管节点强校验 3 家比价');
+('PURCHASE', '设备购买申请', '["bu_owner","engineer_review","purchaser"]', '固定一级审批链：负责人审批 → 工程师评审 → 采购主管；采购主管节点强校验 3 家比价');
 
 -- 金额阈值（审批分级配置，管理员可在审批配置页调整）
 INSERT IGNORE INTO `apply_settings` (`settingKey`, `settingValue`, `label`, `unit`) VALUES

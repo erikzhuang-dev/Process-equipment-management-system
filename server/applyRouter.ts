@@ -394,7 +394,7 @@ export const applyRouter = router({
     overview: publicProcedure.query(async () => {
       const db = await getDb();
       const rows = db ? await db.select().from(applySettings) : [];
-      const thresholds = { CHG_L1: THRESHOLD_META.CHG_L1.default, CHG_L2: THRESHOLD_META.CHG_L2.default, CHG_GM: THRESHOLD_META.CHG_GM.default, PUR_L1: THRESHOLD_META.PUR_L1.default, PUR_L2: THRESHOLD_META.PUR_L2.default };
+      const thresholds = { CHG_L1: THRESHOLD_META.CHG_L1.default, CHG_L2: THRESHOLD_META.CHG_L2.default, CHG_GM: THRESHOLD_META.CHG_GM.default };
       for (const row of rows) {
         if (row.settingKey in thresholds) {
           const value = Number(row.settingValue);
@@ -412,8 +412,6 @@ export const applyRouter = router({
             CHG_L1: z.number().min(0).optional(),
             CHG_L2: z.number().min(0).optional(),
             CHG_GM: z.number().min(0).optional(),
-            PUR_L1: z.number().min(0).optional(),
-            PUR_L2: z.number().min(0).optional(),
           }),
         })
       )
