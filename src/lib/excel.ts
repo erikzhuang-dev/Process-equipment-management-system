@@ -4,6 +4,8 @@ const equipmentStatusMap = {
   "运行中": "running",
   "停机": "stopped",
   "维修中": "maintenance",
+  "保养中": "calibrating",
+  "待验收": "pending_acceptance",
   "报废": "scrapped",
 } as const;
 
@@ -74,7 +76,7 @@ export async function parseEquipmentWorkbook(file: File) {
   return (await rowsFromFile(file)).map(row => {
     const statusLabel = getText(row, "状态") as keyof typeof equipmentStatusMap;
     const status = equipmentStatusMap[statusLabel];
-    if (!status) throw new Error("状态仅支持：运行中、停机、维修中、报废");
+    if (!status) throw new Error("状态仅支持：运行中、停机、维修中、保养中、待验收、报废");
     return {
       code: getText(row, "编号"),
       name: getText(row, "名称"),

@@ -32,3 +32,28 @@ INSERT IGNORE INTO `parts` (`id`, `name`, `specification`, `stockQuantity`, `saf
 (3,'气动比例阀','ITV2030-312BL5',3,6,'2026-09-04 00:45:04','2026-09-04 00:45:04');
 
 INSERT IGNORE INTO `products` (`id`, `code`, `name`, `imageUrl`, `description`, `isActive`, `createdAt`, `updatedAt`) VALUES (1,'FRH','Fast Release Holder','/uploads/frh-demo.jpg',NULL,1,'2026-09-08 06:06:44','2026-09-08 06:06:44');
+
+-- ===== 申请域（设备修改/购买申请）基础数据 =====
+-- 申请域角色用户（身份切换器数据源；接入 OAuth 后由平台用户映射替代）
+INSERT IGNORE INTO `apply_users` (`id`, `name`, `roleKey`, `buId`, `email`, `isActive`) VALUES
+(1, '张伟（申请人）', 'applicant', NULL, 'applicant@pems.local', 1),
+(2, '李莉（设备管理员）', 'equipment_admin', NULL, 'equip-admin@pems.local', 1),
+(3, '王强（设备工程师）', 'engineer', NULL, 'engineer@pems.local', 1),
+(4, '赵敏（设备经理）', 'manager', NULL, 'manager@pems.local', 1),
+(5, '钱进（BU4 负责人）', 'bu_owner', 1, 'bu-owner@pems.local', 1),
+(6, '孙总（总经理）', 'gm', NULL, 'gm@pems.local', 1),
+(7, '周斌（采购主管）', 'purchaser', NULL, 'purchaser@pems.local', 1),
+(8, '吴超（系统管理员）', 'system_admin', NULL, 'sysadmin@pems.local', 1);
+
+-- 审批流定义（链模板；实际链按金额/类型动态截断）
+INSERT IGNORE INTO `approval_flow_defs` (`flowKey`, `flowName`, `chainJson`, `description`) VALUES
+('CHANGE', '设备修改申请', '["admin_review","engineer_review","manager","bu_owner","gm"]', '全链模板；实际按预估费用与类型截断（轻量链免工程师与BU负责人）'),
+('PURCHASE', '设备购买申请', '["bu_owner","engineer_review","purchaser","manager","gm"]', '全链模板；实际按预算截断；采购主管节点强校验 3 家比价');
+
+-- 金额阈值（审批分级配置，管理员可在审批配置页调整）
+INSERT IGNORE INTO `apply_settings` (`settingKey`, `settingValue`, `label`, `unit`) VALUES
+('CHG_L1', '5000', '修改申请·主管直批上限（低于此金额走轻量链）', '元'),
+('CHG_L2', '30000', '修改申请·BU负责人加签下限（低于此金额免BU负责人）', '元'),
+('CHG_GM', '100000', '修改申请·总经理加签下限', '元'),
+('PUR_L1', '50000', '购买申请·设备经理审批下限', '元'),
+('PUR_L2', '200000', '购买申请·总经理审批下限', '元');

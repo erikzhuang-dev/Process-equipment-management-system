@@ -64,6 +64,13 @@
       "when": 1788918821329,
       "tag": "0008_last_sally_floyd",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1789444712607,
+      "tag": "0009_white_lily_hollister",
+      "breakpoints": true
     }
   ]
 }

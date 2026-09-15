@@ -1,7 +1,13 @@
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
+  acceptanceRecords,
+  applySettings,
+  applyUsers,
+  approvalFlowDefs,
+  approvalRecords,
   businessUnits,
+  changeApplies,
   equipment,
   equipmentStatusChanges,
   faults,
@@ -9,10 +15,14 @@ import {
   InsertUser,
   inventoryTransactions,
   maintenancePlans,
+  maintenanceRecords,
   maintenanceWorkOrders,
+  notifications,
   operationLogs,
   parts,
   products,
+  purchaseApplies,
+  quotations,
   repairWorkOrders,
   suppliers,
   users,
@@ -240,6 +250,19 @@ export async function getUserByOpenId(openId: string) {
   if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
   return result[0];
+}
+
+export async function getApplyUserById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(applyUsers).where(eq(applyUsers.id, id)).limit(1);
+  return result[0];
+}
+
+export async function listApplyUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(applyUsers).where(eq(applyUsers.isActive, true)).orderBy(applyUsers.id);
 }
 
 export const PUBLIC_ADMIN_OPEN_ID = "public-admin-workstation";

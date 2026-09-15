@@ -32,6 +32,7 @@ function createStandardUserContext(): TrpcContext {
       lastSignedIn: new Date(),
     },
     req: new Request("https://localhost/api/trpc"),
+    actingUser: null,
   };
 }
 

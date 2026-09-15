@@ -25,6 +25,7 @@ function createAuthContext(): TrpcContext {
   return {
     user,
     req: new Request("https://localhost/api/trpc"),
+    actingUser: null,
   };
 }
 

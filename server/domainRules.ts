@@ -1,10 +1,12 @@
-export const equipmentStatuses = ["running", "stopped", "maintenance", "scrapped"] as const;
+export const equipmentStatuses = ["running", "stopped", "maintenance", "calibrating", "pending_acceptance", "scrapped"] as const;
 export type EquipmentStatus = (typeof equipmentStatuses)[number];
 
 const allowedStatusTransitions: Record<EquipmentStatus, EquipmentStatus[]> = {
-  running: ["stopped", "maintenance", "scrapped"],
-  stopped: ["running", "maintenance", "scrapped"],
-  maintenance: ["running", "stopped", "scrapped"],
+  running: ["stopped", "maintenance", "calibrating", "pending_acceptance", "scrapped"],
+  stopped: ["running", "maintenance", "calibrating", "pending_acceptance", "scrapped"],
+  maintenance: ["running", "stopped", "calibrating", "pending_acceptance", "scrapped"],
+  calibrating: ["running", "stopped", "maintenance", "pending_acceptance", "scrapped"],
+  pending_acceptance: ["running", "stopped", "maintenance", "calibrating", "scrapped"],
   scrapped: [],
 };
 

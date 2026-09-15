@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { applyRouter } from "./applyRouter";
 import {
   changeEquipmentStatus,
   completeMaintenanceWorkOrder,
@@ -57,7 +58,7 @@ export const equipmentSchema = z.object({
   specification: z.string().min(1),
   process: z.string().min(1),
   location: z.string().min(1),
-  status: z.enum(["running", "stopped", "maintenance", "scrapped"]).default("running"),
+  status: z.enum(["running", "stopped", "maintenance", "calibrating", "pending_acceptance", "scrapped"]).default("running"),
   supplier: z.string().max(160).nullable().optional(),
   supplierId: z.coerce.number().int().positive().nullable().optional(),
   businessUnitId: z.coerce.number().int().positive().nullable().optional(),
@@ -139,7 +140,7 @@ export const appRouter = router({
     batchImport: adminProcedure.input(z.array(equipmentImportSchema).min(1)).mutation(({ input, ctx }) => importEquipment(input.map(toEquipmentDbValues), ctx.user.id)),
     update: adminProcedure.input(z.object({ id: z.number().int().positive(), values: equipmentSchema.partial() })).mutation(({ input, ctx }) => updateEquipment(input.id, toEquipmentDbValues(input.values as z.infer<typeof equipmentSchema>), ctx.user.id)),
     remove: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input, ctx }) => deleteEquipment(input.id, ctx.user.id)),
-    changeStatus: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["running", "stopped", "maintenance", "scrapped"]) })).mutation(({ input, ctx }) => changeEquipmentStatus(input.id, input.status, ctx.user.id)),
+    changeStatus: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["running", "stopped", "maintenance", "calibrating", "pending_acceptance", "scrapped"]) })).mutation(({ input, ctx }) => changeEquipmentStatus(input.id, input.status, ctx.user.id)),
     statusHistory: protectedProcedure.input(z.object({ equipmentId: z.number().int().positive() })).query(({ input }) => getStatusHistory(input.equipmentId)),
   }),
   maintenance: router({
@@ -184,6 +185,7 @@ export const appRouter = router({
     updateProduct: adminProcedure.input(z.object({ id: z.number().int().positive(), values: z.object({ code: z.string().min(1).max(32).optional(), name: z.string().min(1).max(160).optional(), imageUrl: z.string().max(500).nullable().optional() }) })).mutation(({ input, ctx }) => updateProduct(input.id, input.values, ctx.user.id)),
     deleteProduct: adminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(({ input, ctx }) => deleteProduct(input.id, ctx.user.id)),
   }),
+  applications: applyRouter,
 });
 
 export type AppRouter = typeof appRouter;
