@@ -69,9 +69,9 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     setCurrentState(prev => {
       const match = prev ? users.find(user => user.id === prev.id) : undefined;
       if (match) return { id: match.id, name: match.name, roleKey: match.roleKey };
-      // 未选身份时默认以"管理人员"进入（公共工作站演示形态）
-      const admin = users.find(user => user.roleKey === "admin") ?? users[0];
-      return { id: admin.id, name: admin.name, roleKey: admin.roleKey };
+      // 双账户模型：默认以普通账户登录；管理员需在切换器中凭密码进入
+      const normal = users.find(user => user.roleKey === "user") ?? users[0];
+      return { id: normal.id, name: normal.name, roleKey: normal.roleKey };
     });
   }, [usersQuery.data]);
 

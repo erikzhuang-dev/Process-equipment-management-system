@@ -28,6 +28,9 @@ import {
 import type { ApplyRoleKey } from "../shared/apply";
 import { isNodeOverdue, isNodeWarning, parseChain } from "./applyEngine";
 import { requireIdentity } from "./applyAuthorization";
+
+/** 管理员账户登录密码（双账户模型；仅存服务端，前端通过 verifyAdmin 校验） */
+const ADMIN_LOGIN_PASSWORD = "admin";
 import * as persistence from "./applyPersistence";
 
 const acting = ({ ctx }: { ctx: { actingUser: null | { id: number; name: string | null; roleKey: ApplyRoleKey } } }) => requireIdentity(ctx.actingUser);
@@ -53,6 +56,15 @@ export const applyRouter = router({
       .from(applyUsers)
       .orderBy(applyUsers.id);
   }),
+
+  /* 管理员登录密码校验（双账户模型：普通账户默认登录，管理员账户凭密码进入） */
+  verifyAdmin: publicProcedure
+    .input(z.object({ password: z.string().min(1) }))
+    .mutation(({ input }) => {
+      const ok = input.password === ADMIN_LOGIN_PASSWORD;
+      if (!ok) return { ok: false as const, message: "密码错误" };
+      return { ok: true as const };
+    }),
 
   /* ---------- 修改申请 CHG ---------- */
   change: router({

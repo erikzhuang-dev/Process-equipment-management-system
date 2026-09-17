@@ -3,7 +3,7 @@
 /** P3 我的申请：我的/全部申请列表（CHG + PUR 合并视图），支持状态过滤、详情查看、撤回入口与驳回后重新提交。 */
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { ClipboardList, FilePlus2, PackagePlus } from "lucide-react";
+import { ArrowLeft, ClipboardList, FilePlus2, PackagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -86,6 +86,7 @@ export default function MyApplies() {
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6">
       <div className="mb-4 flex flex-wrap items-center gap-3">
+        <Button size="icon" variant="outline" aria-label="返回" className="shrink-0 border-[#d9e5d6] text-[#56745b] hover:bg-[#f0f7ec]" onClick={() => navigate("/")}><ArrowLeft className="h-4 w-4" /></Button>
         <div className="mr-auto">
           <h1 className="flex items-center gap-2 text-lg font-semibold text-[#2c4433]"><ClipboardList className="h-5 w-5" /> 申请中心</h1>
           <p className="text-xs text-[#789079]">修改申请与购买申请统一入口；审批中的单据可催办，被驳回可修改后重新提交{myPendingCount > 0 ? ` · 进行中 ${myPendingCount} 单` : ""}</p>

@@ -34,16 +34,10 @@ INSERT IGNORE INTO `parts` (`id`, `name`, `specification`, `stockQuantity`, `saf
 INSERT IGNORE INTO `products` (`id`, `code`, `name`, `imageUrl`, `description`, `isActive`, `createdAt`, `updatedAt`) VALUES (1,'FRH','Fast Release Holder','/uploads/frh-demo.jpg',NULL,1,'2026-09-08 06:06:44','2026-09-08 06:06:44');
 
 -- ===== 申请域（设备修改/购买申请）基础数据 =====
--- 申请域角色用户（身份切换器数据源；权限仅两类：user 普通人员 / admin 管理人员，管理人员可审批）
+-- 申请域固定账户（双账户模型：普通账户默认登录；管理员账户需密码 admin 登录，可审批）
 INSERT IGNORE INTO `apply_users` (`id`, `name`, `roleKey`, `buId`, `email`, `isActive`) VALUES
-(1, '张伟', 'user', NULL, 'applicant@pems.local', 1),
-(2, '李莉', 'admin', NULL, 'equip-admin@pems.local', 1),
-(3, '王强', 'admin', NULL, 'engineer@pems.local', 1),
-(4, '赵敏', 'admin', NULL, 'manager@pems.local', 1),
-(5, '钱进', 'admin', 1, 'bu-owner@pems.local', 1),
-(6, '孙总', 'admin', NULL, 'gm@pems.local', 1),
-(7, '周斌', 'admin', NULL, 'purchaser@pems.local', 1),
-(8, '吴超', 'admin', NULL, 'sysadmin@pems.local', 1);
+(1, '普通账户', 'user', NULL, 'user@pems.local', 1),
+(2, '管理员', 'admin', NULL, 'admin@pems.local', 1);
 
 -- 审批流定义（单节点：管理员审批，管理人员统一审批）
 INSERT IGNORE INTO `approval_flow_defs` (`flowKey`, `flowName`, `chainJson`, `description`) VALUES
