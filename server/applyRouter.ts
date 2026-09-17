@@ -164,7 +164,7 @@ export const applyRouter = router({
         z.object({
           buyType: z.enum(PURCHASE_BUY_TYPES),
           title: z.string().trim().min(4).max(200),
-          reason: z.string().trim().min(4),
+          reason: z.string().trim().min(2),
           buId: z.number().int().positive().nullable().optional(),
           replaceEquipmentId: z.number().int().positive().nullable().optional(),
           equipmentName: z.string().trim().min(2).max(160),

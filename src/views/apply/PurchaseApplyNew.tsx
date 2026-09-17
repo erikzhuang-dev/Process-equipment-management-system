@@ -59,7 +59,7 @@ export default function PurchaseApplyNew() {
   const validate = (): string | null => {
     if (values.equipmentName.trim().length < 2) return "请填写设备名称";
     if (budget <= 0) return "请填写预算金额";
-    if (values.reason.trim().length < 10) return "购买理由至少 10 个字";
+    if (values.reason.trim().length < 2) return "购买理由至少 2 个字";
     if (values.buyType === "replace") {
       if (!values.replaceEquipmentCode.trim()) return "替换购置需填写被替换设备编码";
       if (!replaceMatch) return "被替换设备编码未匹配到台账设备，请核对";
@@ -130,7 +130,7 @@ export default function PurchaseApplyNew() {
               </SelectContent>
             </Select>
           </div>
-          <div className="sm:col-span-2"><Label className="text-xs">购买理由 / 用途 *（至少 10 字）</Label><Textarea rows={3} value={values.reason} onChange={event => setValues(v => ({ ...v, reason: event.target.value }))} placeholder="说明产能缺口、替代方案对比、投资回收预期…" /></div>
+          <div className="sm:col-span-2"><Label className="text-xs">购买理由 / 用途 *（至少 2 字）</Label><Textarea rows={3} value={values.reason} onChange={event => setValues(v => ({ ...v, reason: event.target.value }))} placeholder="说明产能缺口、替代方案对比、投资回收预期…" /></div>
 
           {values.buyType === "replace" && (
             <>
