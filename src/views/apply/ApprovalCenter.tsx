@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, Check, ChevronRight, Clock3, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, ChevronRight, Clock3, RefreshCw, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -137,6 +137,7 @@ function ApprovalCard({ row, onOpenDetail, onActed }: { row: PendingRow; onOpenD
 
 export default function ApprovalCenter() {
   const t = useApplyT();
+  const [, navigate] = useLocation();
   const { users, current } = useIdentity();
   const [tab, setTab] = useState<"pending" | "acted">("pending");
   const [roleFilter, setRoleFilter] = useState("mine");
@@ -156,7 +157,15 @@ export default function ApprovalCenter() {
     <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4 md:p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">{t("审批中心", "Approval Center")}</h1>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="border-[#9bbb9b] text-[#476e50] hover:bg-[#edf5e9]" onClick={() => navigate("/")}>
+              <ArrowLeft className="h-4 w-4" />{t("返回主页", "Back")}
+            </Button>
+            <h1 className="text-xl font-bold text-slate-800">{t("审批中心", "Approval Center")}</h1>
+            {(pending.data?.length ?? 0) > 0 && (
+              <Badge className="bg-rose-500 text-white hover:bg-rose-500">{pending.data?.length ?? 0} {t("件待审批", "pending")}</Badge>
+            )}
+          </div>
           <p className="mt-0.5 text-sm text-slate-500">
             {t("当前身份", "Acting as")}：<span className="font-medium text-emerald-700">{current?.name ?? t("未选择", "none")}</span>
             {" · "}{t("待我处理", "Pending for me")} <span className="font-bold text-rose-600">{pending.data?.length ?? 0}</span> {t("件", "items")}
