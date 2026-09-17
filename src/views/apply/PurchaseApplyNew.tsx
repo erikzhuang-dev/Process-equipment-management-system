@@ -166,9 +166,7 @@ export default function PurchaseApplyNew() {
           <CardContent className="p-4">
             <p className="mb-2 flex items-center gap-1 text-xs font-semibold text-[#789079]"><FileText className="h-3.5 w-3.5" /> 提交后审批流</p>
             <NodeChainProgress chain={chain} currentNode={chain[0]} status="approving" />
-            <p className="mt-2 text-xs text-[#8aa28b]">
-              购买申请由管理人员统一审批；执行阶段须录入并选定报价（≥ 3 家方可提交验收）。
-            </p>
+            <p className="mt-2 text-xs text-[#8aa28b]">提交后管理员审批。</p>
           </CardContent>
         </Card>
       </div>
