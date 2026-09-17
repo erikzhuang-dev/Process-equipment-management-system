@@ -80,7 +80,7 @@ export function IdentitySwitcher() {
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" className="h-auto w-full justify-start gap-3 rounded-xl p-1 hover:bg-[#dcebd8] group-data-[collapsible=icon]:p-1">
+          <Button variant="ghost" className="h-auto w-full justify-start gap-3 rounded-xl p-1 hover:bg-[#dcebd8] group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0">
             <Avatar className="h-9 w-9 border border-[#cfe0ca]">
               <AvatarFallback className={cn("text-xs font-semibold", isAdminActive ? "bg-[#31473a] text-[#e8f3e3]" : "bg-[#dcebd8] text-[#456f4e]")}>{current ? initials(current.name) : "—"}</AvatarFallback>
             </Avatar>
