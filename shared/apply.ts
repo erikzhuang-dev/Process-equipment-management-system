@@ -25,13 +25,12 @@ export const CHANGE_TYPE_META: Record<ChangeType, { nameZh: string; nameEn: stri
 };
 
 /* ---------- 购买申请类型 ---------- */
-export const PURCHASE_BUY_TYPES = ["new_purchase", "replace", "capacity_expansion"] as const;
+export const PURCHASE_BUY_TYPES = ["new_purchase", "replace"] as const;
 export type PurchaseBuyType = (typeof PURCHASE_BUY_TYPES)[number];
 
 export const PURCHASE_BUY_TYPE_META: Record<PurchaseBuyType, { nameZh: string; nameEn: string }> = {
   new_purchase: { nameZh: "新购", nameEn: "New Purchase" },
   replace: { nameZh: "替换购置", nameEn: "Replacement" },
-  capacity_expansion: { nameZh: "扩产增购", nameEn: "Capacity Expansion" },
 };
 
 /* ---------- 紧急程度 ---------- */

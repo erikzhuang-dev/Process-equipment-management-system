@@ -47,7 +47,6 @@ export function PurchaseTypeBadge({ type }: { type: PurchaseBuyType }) {
   const cls: Record<PurchaseBuyType, string> = {
     new_purchase: "border-emerald-200 bg-emerald-50 text-emerald-700",
     replace: "border-amber-200 bg-amber-50 text-amber-700",
-    capacity_expansion: "border-violet-200 bg-violet-50 text-violet-700",
   };
   return <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs", cls[type])}>{PURCHASE_BUY_TYPE_META[type].nameZh}</span>;
 }
@@ -132,5 +131,4 @@ export const APPLY_TYPE_TONE: Record<string, string> = {
   new: "border-emerald-200 bg-emerald-50 text-emerald-700",
   replace: "border-orange-200 bg-orange-50 text-orange-700",
   new_purchase: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  capacity_expansion: "border-violet-200 bg-violet-50 text-violet-700",
 };

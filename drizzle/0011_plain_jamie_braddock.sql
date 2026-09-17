@@ -1,0 +1,1 @@
+ALTER TABLE `purchase_applies` MODIFY COLUMN `buyType` enum('new_purchase','replace') NOT NULL;

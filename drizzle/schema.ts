@@ -305,7 +305,7 @@ export const purchaseApplies = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     applyNo: varchar("applyNo", { length: 40 }).notNull().unique(),
-    buyType: mysqlEnum("buyType", ["new_purchase", "replace", "capacity_expansion"]).notNull(),
+    buyType: mysqlEnum("buyType", ["new_purchase", "replace"]).notNull(),
     status: mysqlEnum("status", ["submitted", "approving", "approved", "executing", "pending_acceptance", "closed", "withdrawn", "rejected"]).default("submitted").notNull(),
     currentNode: varchar("currentNode", { length: 40 }),
     title: varchar("title", { length: 200 }).notNull(),

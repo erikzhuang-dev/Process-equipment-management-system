@@ -32,7 +32,6 @@ export default function PurchaseApplyNew() {
     reason: "",
     replaceEquipmentCode: presetReplaceCode,
     existingStatus: "",
-    expectedBuId: "",
     monthlyOutputGain: "",
   });
 
@@ -65,7 +64,6 @@ export default function PurchaseApplyNew() {
       if (!replaceMatch) return "被替换设备编码未匹配到台账设备，请核对";
       if (!values.existingStatus.trim()) return "替换购置需填写被替换设备现状";
     }
-    if (values.buyType === "capacity_expansion" && !values.expectedBuId) return "扩产增购需选择投产 BU";
     return null;
   };
 
@@ -80,7 +78,7 @@ export default function PurchaseApplyNew() {
     create.mutate({
       buyType: values.buyType,
       title: `${values.equipmentName.trim()} · ${typeLabel}${quantity > 1 ? ` × ${quantity}` : ""}`,
-      buId: values.buyType === "capacity_expansion" ? Number(values.expectedBuId) : null,
+      buId: null,
       replaceEquipmentId: values.buyType === "replace" && replaceMatch ? replaceMatch.id : null,
       equipmentName: values.equipmentName.trim(),
       modelSpec: values.modelSpec.trim() || null,
@@ -99,7 +97,7 @@ export default function PurchaseApplyNew() {
         </Button>
         <div>
           <h1 className="text-lg font-semibold text-[#2c4433]">发起设备购买申请</h1>
-          <p className="text-xs text-[#789079]">新购 / 替换 / 扩产增购，提交后进入 BU 负责人审批；采购阶段需完成至少 3 家比价</p>
+          <p className="text-xs text-[#789079]">新购 / 替换购置，提交后管理员审批；执行阶段需完成至少 3 家比价</p>
         </div>
       </div>
 
@@ -142,21 +140,6 @@ export default function PurchaseApplyNew() {
                 )}
               </div>
               <div><Label className="text-xs">被替换设备现状 *</Label><Input value={values.existingStatus} onChange={event => setValues(v => ({ ...v, existingStatus: event.target.value }))} placeholder="如：故障停机 3 个月，维修成本高于更换" /></div>
-            </>
-          )}
-          {values.buyType === "capacity_expansion" && (
-            <>
-              <div><Label className="text-xs">投产 BU *</Label>
-                <Select value={values.expectedBuId} onValueChange={value => setValues(v => ({ ...v, expectedBuId: value }))}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="选择投产 BU" /></SelectTrigger>
-                  <SelectContent>
-                    {(businessUnits.data?.businessUnits ?? []).map(bu => (
-                      <SelectItem key={bu.id} value={String(bu.id)}>{bu.code} · {bu.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div><Label className="text-xs">预计月增产能</Label><Input value={values.monthlyOutputGain} onChange={event => setValues(v => ({ ...v, monthlyOutputGain: event.target.value }))} placeholder="如：+12 万件/月" /></div>
             </>
           )}
         </div>
