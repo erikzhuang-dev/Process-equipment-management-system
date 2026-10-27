@@ -479,7 +479,7 @@ function MasterDataPanel() {
 {item.imageUrl ? <img src={item.imageUrl} alt={item.name} className="h-10 w-10 shrink-0 rounded-lg object-cover" /> : <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#e3ecdf] text-[#829081]"><ImagePlus className="h-4 w-4" /></div>}
 <div className="min-w-0"><b>{item.code}</b><span className="ml-2 text-[#687b69]">{item.name}</span></div>
 <div className="ml-auto flex shrink-0 gap-1">
-<label className="cursor-pointer"><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) { void uploadProductImage(item, file); } event.target.value = ""; }} /><Button size="sm" variant="ghost" className="h-7 px-2 text-[#56745b]">上传图片</Button></label>
+<label className="cursor-pointer rounded-md px-2 py-1 text-sm text-[#56745b] transition hover:bg-[#f0f4ee]"><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) { void uploadProductImage(item, file); } event.target.value = ""; }} />上传图片</label>
 <Button size="sm" variant="ghost" onClick={() => editProduct(item)} className="h-7 px-2 text-[#56745b]">编辑</Button>
 <Button size="sm" variant="ghost" onClick={() => removeProduct(item)} className="h-7 px-2 text-rose-600">删除</Button>
 </div>
