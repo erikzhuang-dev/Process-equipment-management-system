@@ -32,26 +32,26 @@ const item = {
 describe("行内设备详情交互", () => {
   it("点击设备行展开 React 详情行", () => {
     const onToggle = vi.fn();
-    render(<table><tbody><EquipmentTableRow item={item} expanded={false} isAdmin={false} businessUnits={[]} factories={[]} suppliers={[]} onToggle={onToggle} onInlineSave={vi.fn()} onDelete={vi.fn()} /></tbody></table>);
+    render(<table><tbody><EquipmentTableRow item={item} expanded={false} isAdmin={false} businessUnits={[]} factories={[]} suppliers={[]} products={[]} onToggle={onToggle} onInlineSave={vi.fn()} onDelete={vi.fn()} /></tbody></table>);
     fireEvent.click(screen.getByText("QA-PEM-001"));
     expect(onToggle).toHaveBeenCalledOnce();
   });
 
   it("自动保存后同设备列表刷新仍保留草稿与已保存状态", async () => {
     const user = userEvent.setup(); const onSave = vi.fn().mockResolvedValue(undefined);
-    const { rerender } = render(<InlineEquipmentDetailEditor item={item} businessUnits={[{ id: 1, code: "BU1", name: "BU1" }]} factories={[]} suppliers={[]} isAdmin onSave={onSave} />);
+    const { rerender } = render(<InlineEquipmentDetailEditor item={item} businessUnits={[{ id: 1, code: "BU1", name: "BU1" }]} factories={[]} suppliers={[]} products={[]} isAdmin onSave={onSave} />);
     const capacity = screen.getByLabelText("每小时产能（pcs）") as HTMLInputElement;
     await user.type(capacity, "120"); await user.tab();
     await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ hourlyCapacity: "120" })));
     await waitFor(() => expect(screen.getByText("已自动保存")).toBeTruthy());
-    rerender(<InlineEquipmentDetailEditor item={{ ...item, hourlyCapacity: null }} businessUnits={[{ id: 1, code: "BU1", name: "BU1" }]} factories={[]} suppliers={[]} isAdmin onSave={onSave} />);
+    rerender(<InlineEquipmentDetailEditor item={{ ...item, hourlyCapacity: null }} businessUnits={[{ id: 1, code: "BU1", name: "BU1" }]} factories={[]} suppliers={[]} products={[]} isAdmin onSave={onSave} />);
     expect((screen.getByLabelText("每小时产能（pcs）") as HTMLInputElement).value).toBe("120");
     expect(screen.getByText("已自动保存")).toBeTruthy();
   });
 
   it("输入备注后立即失焦时仍保存最新草稿", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
-    const { container } = render(<InlineEquipmentDetailEditor item={item} businessUnits={[{ id: 1, code: "BU1", name: "BU1" }]} factories={[]} suppliers={[]} isAdmin onSave={onSave} />);
+    const { container } = render(<InlineEquipmentDetailEditor item={item} businessUnits={[{ id: 1, code: "BU1", name: "BU1" }]} factories={[]} suppliers={[]} products={[]} isAdmin onSave={onSave} />);
     const notes = container.querySelector("textarea") as HTMLTextAreaElement;
     fireEvent.change(notes, { target: { value: "即时失焦自动保存验证" } });
     fireEvent.blur(notes);
@@ -66,6 +66,7 @@ describe("行内设备详情交互", () => {
         businessUnits={[{ id: 1, code: "BU1", name: "一号BU" }, { id: 2, code: "BU2", name: "二号BU" }]}
         factories={[]}
         suppliers={[]}
+        products={[]}
         isAdmin
         onSave={vi.fn().mockResolvedValue(undefined)}
       />,
@@ -83,6 +84,7 @@ describe("行内设备详情交互", () => {
         businessUnits={[{ id: 1, code: "BU1", name: "一号BU" }]}
         factories={[{ id: 11, code: "F1", name: "一号厂", businessUnitId: 1 }]}
         suppliers={[{ id: 21, code: "SUP", name: "供应商甲" }]}
+        products={[{ id: 31, code: "PRD", name: "快速卸针器" }]}
         isAdmin
         onSave={vi.fn().mockResolvedValue(undefined)}
       />,
